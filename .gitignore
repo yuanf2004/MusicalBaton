@@ -4,3 +4,5 @@
 
 # build
 /build*/
+
+/nrf52840dk/

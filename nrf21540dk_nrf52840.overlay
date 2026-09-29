@@ -1,0 +1,35 @@
+/* For more help, browse the devicetree documentation at https://docs.zephyrproject.org/latest/build/dts/index.html
+ * You can also visit the nRF DeviceTree extension documentation at https://docs.nordicsemi.com/bundle/nrf-connect-vscode/page/guides/ncs_configure_app.html#devicetree-support-in-the-extension
+ */
+ &pinctrl {
+	i2c0_default: i2c0_default {
+	    group1 {
+		psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
+			<NRF_PSEL(TWIM_SCL, 0, 27)>;
+	    };
+	};
+
+	i2c0_sleep: i2c0_sleep {
+	    group1 {
+		psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
+			<NRF_PSEL(TWIM_SCL, 0, 27)>;
+		low-power-enable;
+	    };
+	};
+    };
+
+    &i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	mma8451: accelerometer@1c {
+	    compatible = "nxp,mma8451";
+	    reg = <0x1c>;
+	};
+    };

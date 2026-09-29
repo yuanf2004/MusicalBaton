@@ -1,7 +1,7 @@
 sample:
-  name: Blinky Sample
+  name: MusicalBaton
 tests:
-  sample.basic.blinky:
+  sample.musical_baton:
     tags:
       - LED
       - gpio
