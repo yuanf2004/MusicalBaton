@@ -87,11 +87,19 @@ int main(void)
 		}
 
 		if (bluetooth_is_active()) {
-			ret = bluetooth_publish(
-				sample.x_mg,
-				sample.y_mg,
-				sample.z_mg
-			);
+			const struct bluetooth_motion_sample motion_sample = {
+				.timestamp_ms = k_uptime_get_32(),
+				.flags = BLUETOOTH_MOTION_FLAG_ACCEL_VALID,
+				.accel_x_mg = sample.x_mg,
+				.accel_y_mg = sample.y_mg,
+				.accel_z_mg = sample.z_mg,
+				/* MMA8451 has no gyroscope; these remain zero. */
+				.gyro_x_dps_tenths = 0,
+				.gyro_y_dps_tenths = 0,
+				.gyro_z_dps_tenths = 0,
+			};
+
+			ret = bluetooth_publish(&motion_sample);
 
 			if (ret < 0) {
 				printk("Bluetooth publish failed: %d\n",

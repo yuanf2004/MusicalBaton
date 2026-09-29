@@ -18,31 +18,37 @@
  * Service:
  * 12345678-1234-5678-1234-56789abcdef0
  *
- * Accelerometer characteristic:
+ * Motion characteristic:
  * 12345678-1234-5678-1234-56789abcdef1
  */
-#define BT_UUID_ACCEL_SERVICE_VAL \
+#define BT_UUID_MOTION_SERVICE_VAL \
 	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, \
 			   0x1234, 0x56789abcdef0)
 
-#define BT_UUID_ACCEL_DATA_VAL \
+#define BT_UUID_MOTION_DATA_VAL \
 	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, \
 			   0x1234, 0x56789abcdef1)
 
-static struct bt_uuid_128 accel_service_uuid =
-	BT_UUID_INIT_128(BT_UUID_ACCEL_SERVICE_VAL);
+static struct bt_uuid_128 motion_service_uuid =
+	BT_UUID_INIT_128(BT_UUID_MOTION_SERVICE_VAL);
 
-static struct bt_uuid_128 accel_data_uuid =
-	BT_UUID_INIT_128(BT_UUID_ACCEL_DATA_VAL);
+static struct bt_uuid_128 motion_data_uuid =
+	BT_UUID_INIT_128(BT_UUID_MOTION_DATA_VAL);
 
 /*
- * Six-byte packet:
+ * Fixed 20-byte motion packet, encoded explicitly in little-endian order:
  *
- * Bytes 0-1: X acceleration in mg
- * Bytes 2-3: Y acceleration in mg
- * Bytes 4-5: Z acceleration in mg
+ * Byte 0:     packet version
+ * Byte 1:     validity/status flags
+ * Bytes 2-3:  sequence number
+ * Bytes 4-7:  nRF uptime timestamp in milliseconds
+ * Bytes 8-13: accelerometer X/Y/Z in mg
+ * Bytes 14-19: gyroscope X/Y/Z in tenths of a degree per second
  */
-static uint8_t accel_packet[6];
+#define MOTION_PACKET_SIZE 20U
+
+static uint8_t motion_packet[MOTION_PACKET_SIZE];
+static uint16_t motion_sequence;
 
 static bool notifications_enabled;
 static bool bluetooth_initialized;
@@ -50,32 +56,39 @@ static atomic_t bluetooth_active;
 static atomic_t advertising;
 static struct bt_conn *current_connection;
 static K_MUTEX_DEFINE(connection_mutex);
+static K_MUTEX_DEFINE(motion_packet_mutex);
 
 /*
  * Called when the phone reads the characteristic manually.
  */
-static ssize_t read_accel(
+static ssize_t read_motion(
 	struct bt_conn *conn,
 	const struct bt_gatt_attr *attr,
 	void *buf,
 	uint16_t len,
 	uint16_t offset)
 {
-	return bt_gatt_attr_read(
+	ssize_t result;
+
+	k_mutex_lock(&motion_packet_mutex, K_FOREVER);
+	result = bt_gatt_attr_read(
 		conn,
 		attr,
 		buf,
 		len,
 		offset,
-		accel_packet,
-		sizeof(accel_packet)
+		motion_packet,
+		sizeof(motion_packet)
 	);
+	k_mutex_unlock(&motion_packet_mutex);
+
+	return result;
 }
 
 /*
  * Called when the phone enables or disables notifications.
  */
-static void accel_ccc_changed(
+static void motion_ccc_changed(
 	const struct bt_gatt_attr *attr,
 	uint16_t value)
 {
@@ -92,27 +105,27 @@ static void accel_ccc_changed(
 /*
  * Attribute indexes:
  *
- * accel_service.attrs[0] = primary service
- * accel_service.attrs[1] = characteristic declaration
- * accel_service.attrs[2] = characteristic value
- * accel_service.attrs[3] = CCC descriptor
+ * motion_service.attrs[0] = primary service
+ * motion_service.attrs[1] = characteristic declaration
+ * motion_service.attrs[2] = characteristic value
+ * motion_service.attrs[3] = CCC descriptor
  */
 BT_GATT_SERVICE_DEFINE(
-	accel_service,
+	motion_service,
 
-	BT_GATT_PRIMARY_SERVICE(&accel_service_uuid),
+	BT_GATT_PRIMARY_SERVICE(&motion_service_uuid),
 
 	BT_GATT_CHARACTERISTIC(
-		&accel_data_uuid.uuid,
+		&motion_data_uuid.uuid,
 		BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
 		BT_GATT_PERM_READ,
-		read_accel,
+		read_motion,
 		NULL,
-		accel_packet
+		motion_packet
 	),
 
 	BT_GATT_CCC(
-		accel_ccc_changed,
+		motion_ccc_changed,
 		BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
 	)
 );
@@ -141,7 +154,7 @@ static const struct bt_data advertising_data[] = {
 static const struct bt_data scan_response_data[] = {
 	BT_DATA_BYTES(
 		BT_DATA_UUID128_ALL,
-		BT_UUID_ACCEL_SERVICE_VAL
+		BT_UUID_MOTION_SERVICE_VAL
 	)
 };
 
@@ -265,6 +278,7 @@ int bluetooth_init(void)
 		return ret;
 	}
 
+	motion_packet[0] = BLUETOOTH_MOTION_PACKET_VERSION;
 	bluetooth_initialized = true;
 	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
 	printk("Bluetooth initialized; advertising is off\n");
@@ -347,18 +361,37 @@ bool bluetooth_is_active(void)
 }
 
 
-int bluetooth_publish(int16_t x_mg, int16_t y_mg, int16_t z_mg)
+int bluetooth_publish(const struct bluetooth_motion_sample *sample)
 {
-	/* Three signed 16-bit values, explicitly encoded little-endian. */
-	sys_put_le16((uint16_t)x_mg, &accel_packet[0]);
-	sys_put_le16((uint16_t)y_mg, &accel_packet[2]);
-	sys_put_le16((uint16_t)z_mg, &accel_packet[4]);
+	int ret = 0;
 
-	if (!notifications_enabled) {
-		return 0;
+	if (sample == NULL) {
+		return -EINVAL;
 	}
 
-	/* Notify connected peers that subscribed to this characteristic. */
-	return bt_gatt_notify(NULL, &accel_service.attrs[2],
-			      accel_packet, sizeof(accel_packet));
+	k_mutex_lock(&motion_packet_mutex, K_FOREVER);
+
+	motion_packet[0] = BLUETOOTH_MOTION_PACKET_VERSION;
+	motion_packet[1] = sample->flags;
+	sys_put_le16(motion_sequence++, &motion_packet[2]);
+	sys_put_le32(sample->timestamp_ms, &motion_packet[4]);
+
+	sys_put_le16((uint16_t)sample->accel_x_mg, &motion_packet[8]);
+	sys_put_le16((uint16_t)sample->accel_y_mg, &motion_packet[10]);
+	sys_put_le16((uint16_t)sample->accel_z_mg, &motion_packet[12]);
+
+	sys_put_le16((uint16_t)sample->gyro_x_dps_tenths,
+		     &motion_packet[14]);
+	sys_put_le16((uint16_t)sample->gyro_y_dps_tenths,
+		     &motion_packet[16]);
+	sys_put_le16((uint16_t)sample->gyro_z_dps_tenths,
+		     &motion_packet[18]);
+
+	if (notifications_enabled) {
+		ret = bt_gatt_notify(NULL, &motion_service.attrs[2],
+				     motion_packet, sizeof(motion_packet));
+	}
+
+	k_mutex_unlock(&motion_packet_mutex);
+	return ret;
 }

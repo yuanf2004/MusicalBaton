@@ -105,13 +105,23 @@ Bluetooth initializes after reboot but starts inactive and does not advertise.
 - Triple-click while active stops advertising
 - Deactivation also disconnects the connected phone
 - An unexpected disconnect while Bluetooth remains active restarts advertising
-- The custom GATT service publishes X/Y/Z acceleration as three little-endian
-  signed 16-bit values in milligravity units
+- The custom GATT service publishes a fixed, versioned 20-byte motion packet
+
+Motion packet version 1, in little-endian order:
+
+- Byte 0: version
+- Byte 1: flags (acceleration valid, gyroscope valid, time synchronized)
+- Bytes 2-3: sequence number
+- Bytes 4-7: nRF uptime in milliseconds
+- Bytes 8-13: accelerometer X/Y/Z as signed 16-bit mg values
+- Bytes 14-19: gyroscope X/Y/Z as signed 16-bit values in 0.1 degrees/second
+- With the MMA8451, only the acceleration-valid flag is set and gyro values are
+  zero. The LSM6DSOX implementation will populate all six axes.
 
 Current UUIDs:
 
 - Service: `12345678-1234-5678-1234-56789abcdef0`
-- Acceleration characteristic: `12345678-1234-5678-1234-56789abcdef1`
+- Motion characteristic: `12345678-1234-5678-1234-56789abcdef1`
 
 ### LEDs
 

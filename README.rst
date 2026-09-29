@@ -55,16 +55,23 @@ Bluetooth data format
 ---------------------
 
 Connect to ``Smart Baton`` using a BLE client. The custom service UUID is
-``12345678-1234-5678-1234-56789abcdef0``. Its readable and notifiable
-acceleration characteristic UUID is
-``12345678-1234-5678-1234-56789abcdef1``.
+``12345678-1234-5678-1234-56789abcdef0``. Its readable and notifiable motion
+characteristic UUID is ``12345678-1234-5678-1234-56789abcdef1``.
 
-Each value is a six-byte packet containing three signed 16-bit integers
-in little-endian order, measured in mg:
+Each value is a fixed 20-byte, little-endian packet:
 
-* Bytes 0-1: X acceleration.
-* Bytes 2-3: Y acceleration.
-* Bytes 4-5: Z acceleration.
+* Byte 0: packet format version, currently 1.
+* Byte 1: flags (bit 0 acceleration valid, bit 1 gyroscope valid, bit 2 time synchronized).
+* Bytes 2-3: unsigned 16-bit sequence number.
+* Bytes 4-7: unsigned 32-bit nRF uptime in milliseconds.
+* Bytes 8-9: signed 16-bit X acceleration in mg.
+* Bytes 10-11: signed 16-bit Y acceleration in mg.
+* Bytes 12-13: signed 16-bit Z acceleration in mg.
+* Bytes 14-15: signed 16-bit X angular velocity in 0.1 degrees/second.
+* Bytes 16-17: signed 16-bit Y angular velocity in 0.1 degrees/second.
+* Bytes 18-19: signed 16-bit Z angular velocity in 0.1 degrees/second.
 
-Enable notifications on the characteristic to receive updates. The
-firmware converts raw readings using the sensor's default +/-2 g range.
+The MMA8451 development sensor fills the acceleration fields, sets bit 0, and
+leaves all gyroscope fields at zero. The final LSM6DSOX implementation will
+also set bit 1 and populate the gyroscope fields. Enable notifications on the
+characteristic to receive updates.
