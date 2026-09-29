@@ -149,6 +149,10 @@ static int start_advertising(void)
 {
 	int ret;
 
+	if (!atomic_get(&bluetooth_active)) {
+		return -EACCES;
+	}
+
 	if (atomic_get(&advertising)) {
 		return 0;
 	}
@@ -173,14 +177,38 @@ static int start_advertising(void)
 	return 0;
 }
 
+static void advertising_restart_handler(struct k_work *work)
+{
+	int ret;
+
+	if (!atomic_get(&bluetooth_active)) {
+		return;
+	}
+
+	ret = start_advertising();
+	if (ret < 0 && atomic_get(&bluetooth_active)) {
+		printk("Retrying advertising restart\n");
+		k_work_reschedule(k_work_delayable_from_work(work),
+				  K_MSEC(500));
+	}
+}
+
+static K_WORK_DELAYABLE_DEFINE(advertising_restart_work,
+			       advertising_restart_handler);
+
+static void schedule_advertising_restart(void)
+{
+	if (atomic_get(&bluetooth_active)) {
+		k_work_reschedule(&advertising_restart_work, K_MSEC(100));
+	}
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
 	if (err != 0U) {
 		printk("Bluetooth connection failed: 0x%02x\n", err);
 		atomic_clear(&advertising);
-		if (atomic_get(&bluetooth_active)) {
-			start_advertising();
-		}
+		schedule_advertising_restart();
 		return;
 	}
 
@@ -214,10 +242,8 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 	k_mutex_unlock(&connection_mutex);
 
-	/* Resume advertising after an unexpected disconnect while active. */
-	if (atomic_get(&bluetooth_active)) {
-		start_advertising();
-	}
+	/* Let the controller finish disconnecting before advertising again. */
+	schedule_advertising_restart();
 }
 
 BT_CONN_CB_DEFINE(connection_callbacks) = {
@@ -279,6 +305,7 @@ int bluetooth_deactivate(void)
 	}
 
 	/* Clear this first so the disconnect callback does not advertise again. */
+	k_work_cancel_delayable(&advertising_restart_work);
 	notifications_enabled = false;
 	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
 

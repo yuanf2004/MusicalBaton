@@ -123,9 +123,9 @@ Bluetooth LED states:
 - Advertising: PWM breathing fade
 - Connected: solid on
 
-The current fade uses 25 brightness steps at 20 ms per step. It takes 0.5
-seconds to fade on and 0.5 seconds to fade off, for a one-second complete cycle.
-For a three-second cycle, keep 20 ms updates and change `FADE_STEPS` to 75.
+The current fade uses 25 brightness steps at 60 ms per step. It takes 1.5
+seconds to fade on and 1.5 seconds to fade off, for a three-second complete
+cycle.
 
 Battery RGB states are prepared for future battery-monitor code:
 
