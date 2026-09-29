@@ -1,13 +1,42 @@
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
 / {
 	aliases {
 		/* Development only: DK Button 1 on P0.11.
 		 * The custom baton PCB maps its user button to P0.19.
 		 */
 		baton-button = &button0;
+
+		/* Development only: external LED on exposed Arduino A0 / P0.03. */
+		ble-led = &development_ble_led;
+	};
+
+	development-leds {
+		compatible = "pwm-leds";
+
+		development_ble_led: bluetooth_led {
+			/* LED anode -> resistor -> P0.03; cathode -> GND. */
+			pwms = <&pwm0 0 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Development Bluetooth LED";
+		};
 	};
 };
 
+
 &pinctrl {
+	baton_pwm0_default: baton_pwm0_default {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 3)>;
+		};
+	};
+
+	baton_pwm0_sleep: baton_pwm0_sleep {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 3)>;
+			low-power-enable;
+		};
+	};
+
 	i2c0_default: i2c0_default {
 		group1 {
 			psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
@@ -22,6 +51,13 @@
 			low-power-enable;
 		};
 	};
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&baton_pwm0_default>;
+	pinctrl-1 = <&baton_pwm0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 &i2c0 {

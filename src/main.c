@@ -4,6 +4,7 @@
 
 #include "bluetooth.h"
 #include "button.h"
+#include "led.h"
 #include "sensor.h"
 
 K_MSGQ_DEFINE(button_event_queue,
@@ -20,6 +21,12 @@ static void on_button_event(const struct button_event *event)
 int main(void)
 {
 	int ret;
+
+	ret = led_init();
+	if (ret < 0) {
+		printk("LED initialization failed: %d\n", ret);
+		return 0;
+	}
 
 	ret = sensor_init();
 	if (ret < 0) {

@@ -1,4 +1,5 @@
 #include "bluetooth.h"
+#include "led.h"
 
 #include <stdbool.h>
 #include <zephyr/kernel.h>
@@ -166,6 +167,7 @@ static int start_advertising(void)
 	}
 
 	atomic_set(&advertising, 1);
+	led_set_bluetooth_state(LED_BLUETOOTH_ADVERTISING);
 	printk("Advertising as %s\n", CONFIG_BT_DEVICE_NAME);
 
 	return 0;
@@ -194,6 +196,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	current_connection = bt_conn_ref(conn);
 	k_mutex_unlock(&connection_mutex);
 
+	led_set_bluetooth_state(LED_BLUETOOTH_CONNECTED);
 	printk("Phone connected\n");
 }
 
@@ -237,6 +240,7 @@ int bluetooth_init(void)
 	}
 
 	bluetooth_initialized = true;
+	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
 	printk("Bluetooth initialized; advertising is off\n");
 
 	return 0;
@@ -276,6 +280,7 @@ int bluetooth_deactivate(void)
 
 	/* Clear this first so the disconnect callback does not advertise again. */
 	notifications_enabled = false;
+	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
 
 	if (atomic_cas(&advertising, 1, 0)) {
 		ret = bt_le_adv_stop();
