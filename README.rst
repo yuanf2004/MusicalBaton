@@ -25,7 +25,10 @@ according to the sensor module and board requirements.
 * ``nrf52840dk_nrf52840.overlay`` configures the nRF52840 DK.
 * ``nrf21540dk_nrf52840.overlay`` provides configuration for the nRF21540 DK.
 * ``prj.conf`` enables I2C, console output, logging, and BLE peripheral support.
-* ``src/main.c`` contains sensor initialization and the BLE service.
+* ``src/main.c`` initializes the modules and runs the sampling loop.
+* ``src/sensor.c`` handles MMA8451 initialization and acceleration readings.
+* ``src/bluetooth.c`` handles BLE advertising, reads, and notifications.
+* ``src/sensor.h`` and ``src/bluetooth.h`` declare the module interfaces.
 
 Building and running
 --------------------
