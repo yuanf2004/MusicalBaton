@@ -1,97 +1,58 @@
-.. zephyr:code-sample:: blinky
-   :name: Blinky
-   :relevant-api: gpio_interface
+Musical Baton
+=============
 
-   Blink an LED forever using the GPIO API.
+Musical Baton is a Zephyr application for an nRF52840 development board
+connected to an MMA8451 accelerometer. The current firmware reads motion
+data over I2C and exposes it over Bluetooth Low Energy (BLE). It does not
+yet generate music or interpret conducting gestures.
 
-Overview
-********
+Current behavior
+----------------
 
-The Blinky sample blinks an LED forever using the :ref:`GPIO API <gpio_api>`.
+* Checks the accelerometer identity and enables measurement mode.
+* Reads X, Y, and Z acceleration approximately every 200 milliseconds.
+* Prints acceleration in milligravity (mg) to the serial console.
+* Advertises as ``Smart Baton`` after successful sensor initialization.
+* Allows a BLE client to read acceleration or subscribe to notifications.
 
-The source code shows how to:
+Hardware and configuration
+--------------------------
 
-#. Get a pin specification from the :ref:`devicetree <dt-guide>` as a
-   :c:struct:`gpio_dt_spec`
-#. Configure the GPIO pin as an output
-#. Toggle the pin forever
+The supplied overlays configure an MMA8451 at I2C address ``0x1c`` with
+SDA on ``P0.26`` and SCL on ``P0.27``. Connect sensor power and ground
+according to the sensor module and board requirements.
 
-See :zephyr:code-sample:`pwm-blinky` for a similar sample that uses the PWM API instead.
+* ``nrf52840dk_nrf52840.overlay`` configures the nRF52840 DK.
+* ``nrf21540dk_nrf52840.overlay`` provides configuration for the nRF21540 DK.
+* ``prj.conf`` enables I2C, console output, logging, and BLE peripheral support.
+* ``src/main.c`` contains sensor initialization and the BLE service.
 
-.. _blinky-sample-requirements:
+Building and running
+--------------------
 
-Requirements
-************
+Use an installed Nordic nRF Connect SDK and its matching toolchain. In the
+nRF Connect extension for VS Code, open this directory as the application,
+create a build configuration for your development board, and select the
+matching overlay if it is not selected automatically. Build and flash the
+connected board, then open its serial console to view sensor readings.
 
-Your board must:
+The SDK is installed separately from this repository. Generated build
+files in ``nrf52840dk/`` are excluded from Git.
 
-#. Have an LED connected via a GPIO pin (these are called "User LEDs" on many of
-   Zephyr's :ref:`boards`).
-#. Have the LED configured using the ``led0`` devicetree alias.
+Bluetooth data format
+---------------------
 
-Building and Running
-********************
+Connect to ``Smart Baton`` using a BLE client. The custom service UUID is
+``12345678-1234-5678-1234-56789abcdef0``. Its readable and notifiable
+acceleration characteristic UUID is
+``12345678-1234-5678-1234-56789abcdef1``.
 
-Build and flash Blinky as follows, changing ``reel_board`` for your board:
+Each value is a six-byte packet containing three signed 16-bit integers
+in little-endian order, measured in mg:
 
-.. zephyr-app-commands::
-   :zephyr-app: samples/basic/blinky
-   :board: reel_board
-   :goals: build flash
-   :compact:
+* Bytes 0-1: X acceleration.
+* Bytes 2-3: Y acceleration.
+* Bytes 4-5: Z acceleration.
 
-After flashing, the LED starts to blink and messages with the current LED state
-are printed on the console. If a runtime error occurs, the sample exits without
-printing to the console.
-
-Build errors
-************
-
-You will see a build error at the source code line defining the ``struct
-gpio_dt_spec led`` variable if you try to build Blinky for an unsupported
-board.
-
-On GCC-based toolchains, the error looks like this:
-
-.. code-block:: none
-
-   error: '__device_dts_ord_DT_N_ALIAS_led_P_gpios_IDX_0_PH_ORD' undeclared here (not in a function)
-
-Adding board support
-********************
-
-To add support for your board, add something like this to your devicetree:
-
-.. code-block:: DTS
-
-   / {
-   	aliases {
-   		led0 = &myled0;
-   	};
-
-   	leds {
-   		compatible = "gpio-leds";
-   		myled0: led_0 {
-   			gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
-                };
-   	};
-   };
-
-The above sets your board's ``led0`` alias to use pin 13 on GPIO controller
-``gpio0``. The pin flags :c:macro:`GPIO_ACTIVE_LOW` mean the LED is on when
-the pin is set to its low state, and off when the pin is in its high state.
-
-Tips:
-
-- See :dtcompatible:`gpio-leds` for more information on defining GPIO-based LEDs
-  in devicetree.
-
-- If you're not sure what to do, check the devicetrees for supported boards which
-  use the same SoC as your target. See :ref:`get-devicetree-outputs` for details.
-
-- See :zephyr_file:`include/zephyr/dt-bindings/gpio/gpio.h` for the flags you can use
-  in devicetree.
-
-- If the LED is built in to your board hardware, the alias should be defined in
-  your :ref:`BOARD.dts file <devicetree-in-out-files>`. Otherwise, you can
-  define one in a :ref:`devicetree overlay <set-devicetree-overlays>`.
+Enable notifications on the characteristic to receive updates. The
+firmware converts raw readings using the sensor's default +/-2 g range.
