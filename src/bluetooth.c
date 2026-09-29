@@ -2,10 +2,13 @@
 
 #include <stdbool.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 
 /*
@@ -41,6 +44,11 @@ static struct bt_uuid_128 accel_data_uuid =
 static uint8_t accel_packet[6];
 
 static bool notifications_enabled;
+static bool bluetooth_initialized;
+static atomic_t bluetooth_active;
+static atomic_t advertising;
+static struct bt_conn *current_connection;
+static K_MUTEX_DEFINE(connection_mutex);
 
 /*
  * Called when the phone reads the characteristic manually.
@@ -136,18 +144,13 @@ static const struct bt_data scan_response_data[] = {
 	)
 };
 
-int bluetooth_start(void)
+static int start_advertising(void)
 {
 	int ret;
 
-	ret = bt_enable(NULL);
-
-	if (ret < 0) {
-		printk("Bluetooth initialization failed: %d\n", ret);
-		return ret;
+	if (atomic_get(&advertising)) {
+		return 0;
 	}
-
-	printk("Bluetooth initialized\n");
 
 	ret = bt_le_adv_start(
 		BT_LE_ADV_CONN_FAST_1,
@@ -162,9 +165,153 @@ int bluetooth_start(void)
 		return ret;
 	}
 
+	atomic_set(&advertising, 1);
 	printk("Advertising as %s\n", CONFIG_BT_DEVICE_NAME);
 
 	return 0;
+}
+
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+	if (err != 0U) {
+		printk("Bluetooth connection failed: 0x%02x\n", err);
+		atomic_clear(&advertising);
+		if (atomic_get(&bluetooth_active)) {
+			start_advertising();
+		}
+		return;
+	}
+
+	atomic_clear(&advertising);
+
+	/* A deactivation may race with the controller completing a connection. */
+	if (!atomic_get(&bluetooth_active)) {
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		return;
+	}
+
+	k_mutex_lock(&connection_mutex, K_FOREVER);
+	current_connection = bt_conn_ref(conn);
+	k_mutex_unlock(&connection_mutex);
+
+	printk("Phone connected\n");
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	ARG_UNUSED(conn);
+
+	printk("Phone disconnected: 0x%02x\n", reason);
+	notifications_enabled = false;
+
+	k_mutex_lock(&connection_mutex, K_FOREVER);
+	if (current_connection != NULL) {
+		bt_conn_unref(current_connection);
+		current_connection = NULL;
+	}
+	k_mutex_unlock(&connection_mutex);
+
+	/* Resume advertising after an unexpected disconnect while active. */
+	if (atomic_get(&bluetooth_active)) {
+		start_advertising();
+	}
+}
+
+BT_CONN_CB_DEFINE(connection_callbacks) = {
+	.connected = connected,
+	.disconnected = disconnected,
+};
+
+int bluetooth_init(void)
+{
+	int ret;
+
+	if (bluetooth_initialized) {
+		return 0;
+	}
+
+	ret = bt_enable(NULL);
+	if (ret < 0) {
+		printk("Bluetooth initialization failed: %d\n", ret);
+		return ret;
+	}
+
+	bluetooth_initialized = true;
+	printk("Bluetooth initialized; advertising is off\n");
+
+	return 0;
+}
+
+int bluetooth_activate(void)
+{
+	int ret;
+
+	if (!bluetooth_initialized) {
+		return -EACCES;
+	}
+
+	if (!atomic_cas(&bluetooth_active, 0, 1)) {
+		return 0;
+	}
+
+	ret = start_advertising();
+	if (ret < 0) {
+		atomic_clear(&bluetooth_active);
+		return ret;
+	}
+
+	printk("Bluetooth active\n");
+	return 0;
+}
+
+int bluetooth_deactivate(void)
+{
+	struct bt_conn *conn = NULL;
+	int ret = 0;
+	int disconnect_ret;
+
+	if (!atomic_cas(&bluetooth_active, 1, 0)) {
+		return 0;
+	}
+
+	/* Clear this first so the disconnect callback does not advertise again. */
+	notifications_enabled = false;
+
+	if (atomic_cas(&advertising, 1, 0)) {
+		ret = bt_le_adv_stop();
+		if (ret < 0) {
+			printk("Failed to stop advertising: %d\n", ret);
+		}
+	}
+
+	k_mutex_lock(&connection_mutex, K_FOREVER);
+	if (current_connection != NULL) {
+		conn = bt_conn_ref(current_connection);
+	}
+	k_mutex_unlock(&connection_mutex);
+
+	if (conn != NULL) {
+		disconnect_ret = bt_conn_disconnect(
+			conn,
+			BT_HCI_ERR_REMOTE_USER_TERM_CONN
+		);
+		bt_conn_unref(conn);
+
+		if (disconnect_ret < 0) {
+			printk("Failed to disconnect phone: %d\n", disconnect_ret);
+			if (ret == 0) {
+				ret = disconnect_ret;
+			}
+		}
+	}
+
+	printk("Bluetooth inactive\n");
+	return ret;
+}
+
+bool bluetooth_is_active(void)
+{
+	return atomic_get(&bluetooth_active) != 0;
 }
 
 

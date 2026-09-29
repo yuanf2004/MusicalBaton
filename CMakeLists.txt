@@ -8,4 +8,5 @@ target_sources(app PRIVATE
   src/main.c
   src/sensor.c
   src/bluetooth.c
+  src/button.c
 )

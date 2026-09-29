@@ -12,7 +12,11 @@ Current behavior
 * Checks the accelerometer identity and enables measurement mode.
 * Reads X, Y, and Z acceleration approximately every 200 milliseconds.
 * Prints acceleration in milligravity (mg) to the serial console.
-* Advertises as ``Smart Baton`` after successful sensor initialization.
+* Initializes Bluetooth without advertising after startup.
+* Triple-pressing the user button toggles Bluetooth availability.
+* When enabled, advertises as ``Smart Baton`` and accepts one connection.
+* When disabled, stops advertising and disconnects the connected phone.
+* Holding the user button for ten seconds reboots the baton.
 * Allows a BLE client to read acceleration or subscribe to notifications.
 
 Hardware and configuration
@@ -22,12 +26,17 @@ The supplied overlays configure an MMA8451 at I2C address ``0x1c`` with
 SDA on ``P0.26`` and SCL on ``P0.27``. Connect sensor power and ground
 according to the sensor module and board requirements.
 
+The nRF52840 DK overlay maps the baton button to the development kit's
+built-in Button 1 on ``P0.11``. This is a development-only mapping; the
+custom baton PCB uses its external user button on ``P0.19``.
+
 * ``nrf52840dk_nrf52840.overlay`` configures the nRF52840 DK.
 * ``nrf21540dk_nrf52840.overlay`` provides configuration for the nRF21540 DK.
 * ``prj.conf`` enables I2C, console output, logging, and BLE peripheral support.
 * ``src/main.c`` initializes the modules and runs the sampling loop.
 * ``src/sensor.c`` handles MMA8451 initialization and acceleration readings.
 * ``src/bluetooth.c`` handles BLE advertising, reads, and notifications.
+* ``src/button.c`` handles debouncing, click counting, and long holds.
 * ``src/sensor.h`` and ``src/bluetooth.h`` declare the module interfaces.
 
 Building and running

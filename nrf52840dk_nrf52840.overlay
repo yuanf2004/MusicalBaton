@@ -1,3 +1,12 @@
+/ {
+	aliases {
+		/* Development only: DK Button 1 on P0.11.
+		 * The custom baton PCB maps its user button to P0.19.
+		 */
+		baton-button = &button0;
+	};
+};
+
 &pinctrl {
 	i2c0_default: i2c0_default {
 		group1 {

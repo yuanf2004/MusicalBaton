@@ -33,3 +33,9 @@
 	    reg = <0x1c>;
 	};
     };
+
+    / {
+	aliases {
+		baton-button = &button0;
+	};
+};
