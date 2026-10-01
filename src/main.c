@@ -21,6 +21,7 @@ static void on_button_event(const struct button_event *event)
 int main(void)
 {
 	int ret;
+	int64_t next_ble_ms;
 
 	ret = led_init();
 	if (ret < 0) {
@@ -45,14 +46,22 @@ int main(void)
 	}
 
 	printk("Triple-press to toggle Bluetooth\n");
+	next_ble_ms = k_uptime_get();
 
 	while (1) {
+		/* Use a fresh deadline each cycle; do not catch up in bursts. */
+		int64_t next_sample_ms = k_uptime_get() + 50;
 		struct button_event event;
-		struct acceleration sample;
+		struct motion_sample sample;
+
 
 		while (k_msgq_get(&button_event_queue,
 				  &event,
 				  K_NO_WAIT) == 0) {
+			if (event.type == BUTTON_EVENT_PRESSED) {
+				printk("Baton button pressed\n");
+			}
+
 			if (event.type == BUTTON_EVENT_LONG_HOLD) {
 				printk("Ten-second hold: rebooting\n");
 				k_sleep(K_MSEC(100));
@@ -86,17 +95,27 @@ int main(void)
 			continue;
 		}
 
-		if (bluetooth_is_active()) {
+		/* Print only successful samples, independently of Bluetooth state. */
+		int64_t now_ms = k_uptime_get();
+
+		printk("IMU accel [mg]: X=%d Y=%d Z=%d | "
+		       "gyro [0.1 deg/s]: X=%d Y=%d Z=%d\n",
+		       sample.accel_x_mg, sample.accel_y_mg,
+		       sample.accel_z_mg, sample.gyro_x_dps_tenths,
+		       sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths);
+
+		if (bluetooth_is_active() && now_ms >= next_ble_ms) {
+			next_ble_ms = now_ms + 200;
 			const struct bluetooth_motion_sample motion_sample = {
 				.timestamp_ms = k_uptime_get_32(),
-				.flags = BLUETOOTH_MOTION_FLAG_ACCEL_VALID,
-				.accel_x_mg = sample.x_mg,
-				.accel_y_mg = sample.y_mg,
-				.accel_z_mg = sample.z_mg,
-				/* MMA8451 has no gyroscope; these remain zero. */
-				.gyro_x_dps_tenths = 0,
-				.gyro_y_dps_tenths = 0,
-				.gyro_z_dps_tenths = 0,
+				.flags = BLUETOOTH_MOTION_FLAG_ACCEL_VALID |
+					 BLUETOOTH_MOTION_FLAG_GYRO_VALID,
+				.accel_x_mg = sample.accel_x_mg,
+				.accel_y_mg = sample.accel_y_mg,
+				.accel_z_mg = sample.accel_z_mg,
+				.gyro_x_dps_tenths = sample.gyro_x_dps_tenths,
+				.gyro_y_dps_tenths = sample.gyro_y_dps_tenths,
+				.gyro_z_dps_tenths = sample.gyro_z_dps_tenths,
 			};
 
 			ret = bluetooth_publish(&motion_sample);
@@ -107,6 +126,6 @@ int main(void)
 			}
 		}
 
-		k_sleep(K_MSEC(200));
+		k_sleep(K_TIMEOUT_ABS_MS(next_sample_ms));
 	}
 }

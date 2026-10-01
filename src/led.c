@@ -9,6 +9,8 @@
 
 #define FADE_UPDATE_INTERVAL K_MSEC(60)
 #define FADE_STEPS 25U
+#define TRANSITION_FLASH_INTERVAL K_MSEC(100)
+#define TRANSITION_FLASH_PHASES 6U
 #define BLE_LED_NODE DT_ALIAS(ble_led)
 
 BUILD_ASSERT(DT_NODE_HAS_STATUS(BLE_LED_NODE, okay),
@@ -36,11 +38,13 @@ static enum led_bluetooth_state bluetooth_state;
 static uint8_t fade_step;
 static bool fade_up;
 static bool initialized;
+static bool transition_flashing;
+static uint8_t transition_phase;
 static K_MUTEX_DEFINE(led_mutex);
 
-static void bluetooth_fade_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(bluetooth_fade_work,
-			       bluetooth_fade_handler);
+static void bluetooth_led_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(bluetooth_led_work,
+			       bluetooth_led_handler);
 
 static void set_bluetooth_brightness(uint8_t step)
 {
@@ -78,14 +82,45 @@ static int configure_gpio_led(const struct gpio_dt_spec *led)
 }
 #endif
 
-static void bluetooth_fade_handler(struct k_work *work)
+/* Caller holds led_mutex. Apply the latest requested steady LED behavior. */
+static void apply_bluetooth_state(void)
+{
+	switch (bluetooth_state) {
+	case LED_BLUETOOTH_ADVERTISING:
+		fade_step = 0U;
+		fade_up = true;
+		set_bluetooth_brightness(0U);
+		k_work_reschedule(&bluetooth_led_work, FADE_UPDATE_INTERVAL);
+		break;
+	case LED_BLUETOOTH_CONNECTED:
+		set_bluetooth_brightness(FADE_STEPS);
+		break;
+	case LED_BLUETOOTH_OFF:
+	default:
+		set_bluetooth_brightness(0U);
+		break;
+	}
+}
+
+static void bluetooth_led_handler(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
 	k_mutex_lock(&led_mutex, K_FOREVER);
 
-	if (initialized &&
-	    bluetooth_state == LED_BLUETOOTH_ADVERTISING) {
+	if (initialized && transition_flashing) {
+		transition_phase++;
+		if (transition_phase < TRANSITION_FLASH_PHASES) {
+			set_bluetooth_brightness((transition_phase % 2U) ?
+						0U : FADE_STEPS);
+			k_work_reschedule(&bluetooth_led_work,
+					  TRANSITION_FLASH_INTERVAL);
+		} else {
+			transition_flashing = false;
+			apply_bluetooth_state();
+		}
+	} else if (initialized &&
+		   bluetooth_state == LED_BLUETOOTH_ADVERTISING) {
 		set_bluetooth_brightness(fade_step);
 
 		if (fade_up) {
@@ -102,7 +137,7 @@ static void bluetooth_fade_handler(struct k_work *work)
 			fade_step--;
 		}
 
-		k_work_reschedule(&bluetooth_fade_work,
+		k_work_reschedule(&bluetooth_led_work,
 				  FADE_UPDATE_INTERVAL);
 	}
 
@@ -153,24 +188,31 @@ void led_set_bluetooth_state(enum led_bluetooth_state state)
 	}
 
 	k_mutex_lock(&led_mutex, K_FOREVER);
-	k_work_cancel_delayable(&bluetooth_fade_work);
-	bluetooth_state = state;
-
-	switch (state) {
-	case LED_BLUETOOTH_ADVERTISING:
-		fade_step = 0U;
-		fade_up = true;
-		set_bluetooth_brightness(fade_step);
-		k_work_reschedule(&bluetooth_fade_work, K_NO_WAIT);
-		break;
-	case LED_BLUETOOTH_CONNECTED:
-		set_bluetooth_brightness(FADE_STEPS);
-		break;
-	case LED_BLUETOOTH_OFF:
-	default:
-		set_bluetooth_brightness(0U);
-		break;
+	if (state == bluetooth_state) {
+		k_mutex_unlock(&led_mutex);
+		return;
 	}
+
+	bool connection_changed = (state == LED_BLUETOOTH_CONNECTED) !=
+				  (bluetooth_state == LED_BLUETOOTH_CONNECTED);
+
+	bluetooth_state = state;
+	if (connection_changed) {
+		/* Start with ON, then alternate every 100 ms for three flashes.
+		 * A new connection/disconnection restarts the transition.
+		 */
+		k_work_cancel_delayable(&bluetooth_led_work);
+		transition_flashing = true;
+		transition_phase = 0U;
+		set_bluetooth_brightness(FADE_STEPS);
+		k_work_reschedule(&bluetooth_led_work, TRANSITION_FLASH_INTERVAL);
+	} else if (!transition_flashing) {
+		k_work_cancel_delayable(&bluetooth_led_work);
+		apply_bluetooth_state();
+	}
+	/* During a disconnect flash, OFF/ADVERTISING changes only update the
+	 * final destination, so an advertising restart cannot cut flashes short.
+	 */
 
 	k_mutex_unlock(&led_mutex);
 }

@@ -46,6 +46,7 @@ static struct bt_uuid_128 motion_data_uuid =
  * Bytes 14-19: gyroscope X/Y/Z in tenths of a degree per second
  */
 #define MOTION_PACKET_SIZE 20U
+#define ADVERTISING_TIMEOUT_MS 60000
 
 static uint8_t motion_packet[MOTION_PACKET_SIZE];
 static uint16_t motion_sequence;
@@ -55,6 +56,7 @@ static bool bluetooth_initialized;
 static atomic_t bluetooth_active;
 static atomic_t advertising;
 static struct bt_conn *current_connection;
+static int64_t advertising_deadline_ms;
 static K_MUTEX_DEFINE(connection_mutex);
 static K_MUTEX_DEFINE(motion_packet_mutex);
 
@@ -158,15 +160,60 @@ static const struct bt_data scan_response_data[] = {
 	)
 };
 
+static void advertising_timeout_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(advertising_timeout_work,
+			       advertising_timeout_handler);
+
+static void advertising_timeout_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	/* Serialize expiry with connection acceptance and advertising starts. */
+	k_mutex_lock(&connection_mutex, K_FOREVER);
+	if (!atomic_get(&bluetooth_active) || !atomic_get(&advertising) ||
+	    current_connection != NULL) {
+		k_mutex_unlock(&connection_mutex);
+		return;
+	}
+
+	int64_t remaining_ms = advertising_deadline_ms - k_uptime_get();
+
+	if (remaining_ms > 0) {
+		/* An old queued expiry must not close a newly opened window. */
+		k_work_reschedule(&advertising_timeout_work, K_MSEC(remaining_ms));
+		k_mutex_unlock(&connection_mutex);
+		return;
+	}
+
+	int ret = bt_le_adv_stop();
+
+	if (ret < 0) {
+		printk("Advertising timeout: failed to stop (%d); retrying\n", ret);
+		k_work_reschedule(&advertising_timeout_work, K_SECONDS(1));
+		k_mutex_unlock(&connection_mutex);
+		return;
+	}
+
+	atomic_clear(&advertising);
+	atomic_clear(&bluetooth_active);
+	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
+	printk("Advertising timed out after 60 seconds; Bluetooth inactive. "
+	       "Triple-press to restart\n");
+	k_mutex_unlock(&connection_mutex);
+}
+
 static int start_advertising(void)
 {
 	int ret;
 
+	k_mutex_lock(&connection_mutex, K_FOREVER);
 	if (!atomic_get(&bluetooth_active)) {
+		k_mutex_unlock(&connection_mutex);
 		return -EACCES;
 	}
 
-	if (atomic_get(&advertising)) {
+	if (atomic_get(&advertising) || current_connection != NULL) {
+		k_mutex_unlock(&connection_mutex);
 		return 0;
 	}
 
@@ -180,12 +227,18 @@ static int start_advertising(void)
 
 	if (ret < 0) {
 		printk("Advertising failed: %d\n", ret);
+		k_mutex_unlock(&connection_mutex);
 		return ret;
 	}
 
 	atomic_set(&advertising, 1);
+	advertising_deadline_ms = k_uptime_get() + ADVERTISING_TIMEOUT_MS;
+	k_work_reschedule(&advertising_timeout_work,
+			  K_MSEC(ADVERTISING_TIMEOUT_MS));
 	led_set_bluetooth_state(LED_BLUETOOTH_ADVERTISING);
-	printk("Advertising as %s\n", CONFIG_BT_DEVICE_NAME);
+	printk("Advertising as %s (60-second connection window)\n",
+	       CONFIG_BT_DEVICE_NAME);
+	k_mutex_unlock(&connection_mutex);
 
 	return 0;
 }
@@ -225,19 +278,20 @@ static void connected(struct bt_conn *conn, uint8_t err)
 		return;
 	}
 
+	k_mutex_lock(&connection_mutex, K_FOREVER);
 	atomic_clear(&advertising);
+	k_work_cancel_delayable(&advertising_timeout_work);
 
 	/* A deactivation may race with the controller completing a connection. */
 	if (!atomic_get(&bluetooth_active)) {
+		k_mutex_unlock(&connection_mutex);
 		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 		return;
 	}
 
-	k_mutex_lock(&connection_mutex, K_FOREVER);
 	current_connection = bt_conn_ref(conn);
-	k_mutex_unlock(&connection_mutex);
-
 	led_set_bluetooth_state(LED_BLUETOOTH_CONNECTED);
+	k_mutex_unlock(&connection_mutex);
 	printk("Phone connected\n");
 }
 
@@ -254,6 +308,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		current_connection = NULL;
 	}
 	k_mutex_unlock(&connection_mutex);
+
+	led_set_bluetooth_state(atomic_get(&bluetooth_active) ?
+				LED_BLUETOOTH_ADVERTISING : LED_BLUETOOTH_OFF);
 
 	/* Let the controller finish disconnecting before advertising again. */
 	schedule_advertising_restart();

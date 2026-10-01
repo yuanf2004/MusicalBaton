@@ -3,16 +3,26 @@
 
 #include <stdint.h>
 
-struct acceleration {
-	int16_t x_mg;
-	int16_t y_mg;
-	int16_t z_mg;
+struct motion_sample {
+	int16_t accel_x_mg;
+	int16_t accel_y_mg;
+	int16_t accel_z_mg;
+
+	/* Angular velocity in tenths of a degree per second. */
+	int16_t gyro_x_dps_tenths;
+	int16_t gyro_y_dps_tenths;
+	int16_t gyro_z_dps_tenths;
 };
 
-/* Verify the MMA8451 and enable measurement. Returns 0 or a negative error. */
+/* Wait for power-up, initialize the LSM6DSOX driver, and allow filters to settle.
+ * Measurement ranges and rates are configured by the baton-imu DT alias.
+ * Call from thread context. Returns 0 or a negative error.
+ */
 int sensor_init(void);
 
-/* Read acceleration in mg. Call after sensor_init(); returns 0 or an error. */
-int sensor_read(struct acceleration *sample);
+/* Fetch all six axes. Call after sensor_init() from the main thread.
+ * Returns 0 or a negative error; leaves the sample unchanged on failure.
+ */
+int sensor_read(struct motion_sample *sample);
 
 #endif

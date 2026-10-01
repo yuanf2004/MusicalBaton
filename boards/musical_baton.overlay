@@ -1,3 +1,4 @@
+#include <zephyr/dt-bindings/sensor/lsm6dso.h>
 /* Musical Baton custom PCB hardware map.
  *
  * This overlay is for the actual PCB, not the nRF52840 development kit.
@@ -12,6 +13,7 @@
 
 / {
 	aliases {
+		baton-imu = &lsm6dsox;
 		baton-button = &baton_button;
 		ble-led = &ble_led;
 		rgb-red-led = &rgb_red_led;
@@ -117,8 +119,17 @@
 
 	/* LSM6DSOX SA0 is tied low on the PCB, selecting address 0x6A. */
 	lsm6dsox: imu@6a {
+		/* sensor_init() waits for power-up before initializing the driver. */
+		zephyr,deferred-init;
 		compatible = "st,lsm6dso";
 		reg = <0x6a>;
+		/* NCS uses the LSM6DSO driver for basic LSM6DSOX motion data. */
+		accel-range = <LSM6DSO_DT_FS_4G>;
+		accel-odr = <LSM6DSO_DT_ODR_52Hz>;
+		/* Accelerometer LPF2: 52 Hz / 10 = approximately 5.2 Hz. */
+		accel-lp-filter = <LSM6DSO_DT_LP_ODR_DIV_10>;
+		gyro-range = <LSM6DSO_DT_FS_1000DPS>;
+		gyro-odr = <LSM6DSO_DT_ODR_52Hz>;
 		status = "okay";
 
 		irq-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;

@@ -78,6 +78,7 @@ static void debounce_work_handler(struct k_work *work)
 	pressed = now_pressed;
 
 	if (pressed) {
+		report_event(BUTTON_EVENT_PRESSED, 0);
 		long_hold_reported = false;
 		k_work_reschedule(&long_hold_work, LONG_HOLD_TIME);
 		return;
@@ -151,6 +152,7 @@ int button_init(button_event_handler_t handler)
 		return ret;
 	}
 
-	printk("Button initialized\n");
+	printk("Button initialized: %s pin %u\n",
+	       button.port->name, button.pin);
 	return 0;
 }

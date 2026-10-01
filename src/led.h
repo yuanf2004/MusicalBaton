@@ -19,6 +19,9 @@ enum led_battery_state {
 };
 
 int led_init(void);
+/* Entering/leaving CONNECTED flashes three times before the requested state.
+ * Timed work handles the animation; repeated states do not restart it.
+ */
 void led_set_bluetooth_state(enum led_bluetooth_state state);
 void led_set_battery_state(enum led_battery_state state);
 

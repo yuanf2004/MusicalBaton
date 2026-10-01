@@ -1,125 +1,126 @@
 #include "sensor.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/sys/util.h>
 
-#define MMA8451_NODE DT_NODELABEL(mma8451)
+#define IMU_NODE DT_ALIAS(baton_imu)
 
-/* MMA8451 register addresses */
-#define MMA8451_REG_OUT_X_MSB  0x01
-#define MMA8451_REG_WHO_AM_I   0x0D
-#define MMA8451_REG_CTRL_REG1  0x2A
+/* AN5272: ODR/10 LPF2 can take 20 samples to settle at 52 Hz (~385 ms).
+ * Leave margin before exposing measurements. Revisit if ODR/filter changes.
+ */
+#define IMU_MEASUREMENT_SETTLE_MS 500
 
-#define MMA8451_WHO_AM_I_VALUE 0x1A
+static const struct device *const imu = DEVICE_DT_GET(IMU_NODE);
+static bool initialized;
+static const struct i2c_dt_spec imu_i2c = I2C_DT_SPEC_GET(IMU_NODE);
 
-static const struct i2c_dt_spec mma8451 =
-	I2C_DT_SPEC_GET(MMA8451_NODE);
+static void diagnose_i2c(void)
+{
+	/* These are read-only identity probes, not an automatic address change. */
+	for (unsigned int i = 0; i < 2; i++) {
+		uint16_t address = imu_i2c.addr ^ i;
+		uint8_t identity;
+		int ret = i2c_reg_read_byte(imu_i2c.bus, address, 0x0f, &identity);
+
+		if (ret == 0) {
+			printk("IMU probe 0x%02x: WHO_AM_I=0x%02x (expected 0x6c)\n",
+			       address, identity);
+		} else {
+			printk("IMU probe 0x%02x: read failed (%d)\n", address, ret);
+		}
+	}
+}
+
+static int16_t accel_to_mg(const struct sensor_value *value)
+{
+	return (int16_t)CLAMP(sensor_ms2_to_mg(value), INT16_MIN, INT16_MAX);
+}
+
+static int16_t gyro_to_dps_tenths(const struct sensor_value *value)
+{
+	/* Zephyr returns rad/s. Its helper converts to units of 0.00001 deg/s.
+	 * Round symmetrically to 0.1 deg/s before packing into the BLE fields.
+	 */
+	int32_t angular_velocity = sensor_rad_to_10udegrees(value);
+	int32_t tenths = (angular_velocity +
+			 (angular_velocity >= 0 ? 5000 : -5000)) / 10000;
+
+	return (int16_t)CLAMP(tenths, INT16_MIN, INT16_MAX);
+}
 
 int sensor_init(void)
 {
-	uint8_t who_am_i;
-	uint8_t ctrl_reg1;
-	int ret;
+	if (initialized) {
+		return 0;
+	}
 
-	if (!i2c_is_ready_dt(&mma8451)) {
-		printk("I2C device is not ready\n");
+	/* Deferred initialization prevents I2C access during sensor power-up. */
+	k_sleep(K_MSEC(100));
+	if (!i2c_is_ready_dt(&imu_i2c)) {
+		printk("IMU I2C controller is not ready\n");
 		return -ENODEV;
 	}
 
-	printk("I2C controller is ready\n");
+	int ret = device_init(imu);
 
-	/* Verify that the sensor responds. */
-	ret = i2c_reg_read_byte_dt(
-		&mma8451,
-		MMA8451_REG_WHO_AM_I,
-		&who_am_i
-	);
-
-	if (ret < 0) {
-		printk("Failed to read WHO_AM_I: %d\n", ret);
+	if (ret < 0 && ret != -EALREADY) {
+		printk("LSM6DSOX initialization failed: %d\n", ret);
+		diagnose_i2c();
 		return ret;
 	}
-
-	printk("WHO_AM_I: 0x%02X\n", who_am_i);
-
-	if (who_am_i != MMA8451_WHO_AM_I_VALUE) {
-		printk(
-			"Unexpected sensor ID; expected 0x%02X\n",
-			MMA8451_WHO_AM_I_VALUE
-		);
-
+	if (!device_is_ready(imu)) {
+		printk("LSM6DSOX is not ready; check I2C wiring and address\n");
+		diagnose_i2c();
 		return -ENODEV;
 	}
 
-	/*
-	 * Read CTRL_REG1 and set bit 0 to enter active mode.
-	 */
-	ret = i2c_reg_read_byte_dt(
-		&mma8451,
-		MMA8451_REG_CTRL_REG1,
-		&ctrl_reg1
-	);
-
-	if (ret < 0) {
-		printk("Failed to read CTRL_REG1: %d\n", ret);
-		return ret;
-	}
-
-	ctrl_reg1 |= 0x01;
-
-	ret = i2c_reg_write_byte_dt(
-		&mma8451,
-		MMA8451_REG_CTRL_REG1,
-		ctrl_reg1
-	);
-
-	if (ret < 0) {
-		printk("Failed to activate MMA8451: %d\n", ret);
-		return ret;
-	}
-
-	printk("MMA8451 active\n");
-
+	/* Allow accelerometer LPF2 and the gyroscope to settle. */
+	k_sleep(K_MSEC(IMU_MEASUREMENT_SETTLE_MS));
+	initialized = true;
+	printk("LSM6DSOX ready (accelerometer and gyroscope)\n");
 	return 0;
 }
 
-int sensor_read(struct acceleration *sample)
+int sensor_read(struct motion_sample *sample)
 {
-	uint8_t data[6];
-	int ret = i2c_burst_read_dt(&mma8451, MMA8451_REG_OUT_X_MSB,
-				  data, sizeof(data));
+	struct sensor_value accel[3];
+	struct sensor_value gyro[3];
+	int ret;
 
+	if (sample == NULL) {
+		return -EINVAL;
+	}
+	if (!initialized) {
+		return -EACCES;
+	}
+
+	ret = sensor_sample_fetch(imu);
+	if (ret < 0) {
+		return ret;
+	}
+	ret = sensor_channel_get(imu, SENSOR_CHAN_ACCEL_XYZ, accel);
+	if (ret < 0) {
+		return ret;
+	}
+	ret = sensor_channel_get(imu, SENSOR_CHAN_GYRO_XYZ, gyro);
 	if (ret < 0) {
 		return ret;
 	}
 
-	/*
-	 * Signed 14-bit output, left-aligned within 16 bits.
-	 */
-	int16_t x_raw =
-		(int16_t)((data[0] << 8) | data[1]) >> 2;
-
-	int16_t y_raw =
-		(int16_t)((data[2] << 8) | data[3]) >> 2;
-
-	int16_t z_raw =
-		(int16_t)((data[4] << 8) | data[5]) >> 2;
-
-	/*
-	 * At the default ±2 g range:
-	 * approximately 4096 counts per g.
-	 */
-	sample->x_mg =
-		(int16_t)(((int32_t)x_raw * 1000) / 4096);
-
-	sample->y_mg =
-		(int16_t)(((int32_t)y_raw * 1000) / 4096);
-
-	sample->z_mg =
-		(int16_t)(((int32_t)z_raw * 1000) / 4096);
-
+	*sample = (struct motion_sample) {
+		.accel_x_mg = accel_to_mg(&accel[0]),
+		.accel_y_mg = accel_to_mg(&accel[1]),
+		.accel_z_mg = accel_to_mg(&accel[2]),
+		.gyro_x_dps_tenths = gyro_to_dps_tenths(&gyro[0]),
+		.gyro_y_dps_tenths = gyro_to_dps_tenths(&gyro[1]),
+		.gyro_z_dps_tenths = gyro_to_dps_tenths(&gyro[2]),
+	};
 	return 0;
 }

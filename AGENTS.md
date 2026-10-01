@@ -5,7 +5,7 @@
 This repository contains Zephyr/nRF Connect SDK firmware for a battery-powered
 musical baton based on the nRF52840. The firmware reads motion data and exposes
 it over Bluetooth Low Energy. Development currently uses an nRF52840 DK and an
-MMA8451 breakout; the finished PCB uses an LSM6DSOX IMU.
+LSM6DSOX breakout; the finished PCB also uses an LSM6DSOX IMU.
 
 Treat the KiCad schematic as the source of truth for PCB wiring. The schematic
 used to verify the pin map is currently located at:
@@ -26,9 +26,9 @@ The normal DK build automatically loads `nrf52840dk_nrf52840.overlay`.
 |---|---|---|
 | User button | DK Button 1, P0.11 | Active-low; the button connects the pin to GND |
 | Bluetooth LED | Arduino A0 / P0.03 | PWM output; LED anode goes through a 330 ohm to 1 kohm resistor to P0.03, cathode to GND |
-| MMA8451 SDA | P0.26 | Development sensor only |
-| MMA8451 SCL | P0.27 | Development sensor only |
-| MMA8451 address | 0x1C | Current `sensor.c` target |
+| LSM6DSOX SDA | P0.27 | Matches PCB wiring |
+| LSM6DSOX SCL | P0.26 | Matches PCB wiring |
+| LSM6DSOX address | 0x6A | SA0 low; I2C fast mode |
 
 P0.19 and P0.21 are connected to the DK's external QSPI flash by default and
 are not routed for normal GPIO use at connector P24. Using P0.19 requires
@@ -70,6 +70,7 @@ C code depends on these logical names:
 
 | Alias | Purpose |
 |---|---|
+| `baton-imu` | Six-axis LSM6DSOX IMU |
 | `baton-button` | Main user button |
 | `ble-led` | PWM-controlled Bluetooth status LED |
 | `rgb-red-led` | Battery RGB red channel |
@@ -90,7 +91,8 @@ difference.
 - Multi-click collection window: 600 ms
 - Three quick presses toggle Bluetooth
 - Holding for 10 seconds performs a cold reboot
-- A detected press prints `Baton button pressed`
+- A detected press queues `BUTTON_EVENT_PRESSED`; the main loop prints
+  `Baton button pressed`. Initialization prints the configured controller/pin.
 - Completed click sequences are delivered as generic click-count events so
   more actions can be added later
 
@@ -105,6 +107,10 @@ Bluetooth initializes after reboot but starts inactive and does not advertise.
 - Triple-click while active stops advertising
 - Deactivation also disconnects the connected phone
 - An unexpected disconnect while Bluetooth remains active restarts advertising
+- Advertising without a live connection times out after 60 seconds: advertising
+  stops, the LED turns off, and Bluetooth becomes inactive. Triple-click opens
+  another window. Connecting cancels expiry; disconnecting starts a new window.
+  Stored pairing/bonding does not count as a live connection.
 - The custom GATT service publishes a fixed, versioned 20-byte motion packet
 
 Motion packet version 1, in little-endian order:
@@ -115,8 +121,8 @@ Motion packet version 1, in little-endian order:
 - Bytes 4-7: nRF uptime in milliseconds
 - Bytes 8-13: accelerometer X/Y/Z as signed 16-bit mg values
 - Bytes 14-19: gyroscope X/Y/Z as signed 16-bit values in 0.1 degrees/second
-- With the MMA8451, only the acceleration-valid flag is set and gyro values are
-  zero. The LSM6DSOX implementation will populate all six axes.
+- Successful LSM6DSOX reads populate all six axes and set acceleration-valid
+  and gyroscope-valid flags. Time synchronization is not implemented.
 
 Current UUIDs:
 
@@ -131,7 +137,11 @@ Bluetooth LED states:
 
 - Bluetooth inactive: off
 - Advertising: PWM breathing fade
-- Connected: solid on
+- Connected: three 100 ms on/off flashes, then solid on
+- Leaving connected: three 100 ms on/off flashes, then breathing if advertising
+  or off if inactive. Bluetooth callbacks request states; delayed LED work
+  animates the 600 ms transition without delaying connection/disconnection.
+  Repeated states and advertising restarts preserve ongoing disconnect flashes.
 
 The current fade uses 25 brightness steps at 60 ms per step. It takes 1.5
 seconds to fade on and 1.5 seconds to fade off, for a three-second complete
@@ -150,21 +160,35 @@ channels.
 
 ### Sensor status
 
-`src/sensor.c` currently talks directly to an MMA8451 for development testing.
-It expects a devicetree node labeled `mma8451`.
+`src/sensor.c` uses the Zephyr sensor API and the `baton-imu` devicetree alias.
+NCS v3.4.0 uses `st,lsm6dso` / `CONFIG_LSM6DSO` for basic LSM6DSOX motion
+registers (matching WHO_AM_I value 0x6C). Both DK and PCB overlays configure
+52 Hz acceleration and gyro, +/-4 g and +/-1000 degrees/second ranges.
+Accelerometer LPF2 uses ODR/10 (approximately 5.2 Hz) via `accel-lp-filter`;
+all console/BLE acceleration samples are filtered in hardware. Gyroscope filter
+settings remain at the driver defaults.
+The application polls every 50 ms (BLE updates remain every 200 ms); interrupts and FIFO are not used.
+Successful six-axis samples print to the 115200-baud serial console approximately
+every 50 ms, one sample per line, even when Bluetooth is inactive.
+`CONFIG_LOG_PRINTK=n` routes prints directly to UART to avoid deferred-log batching.
+IMU nodes use `zephyr,deferred-init`; `sensor_init()` waits 100 ms before
+calling `device_init()` and another 500 ms after initialization for filter/measurement
+settling (20 accelerometer samples at 52 Hz take approximately 385 ms). Revisit
+this wait when adjusting ODR or filtering. Initialization failure prints identity probes at both SA0 addresses. Readings are converted to mg and
+0.1 degrees/second, rounded, and clamped to signed 16 bits. Failed reads leave
+the output unchanged and are not published over BLE.
 
-The PCB overlay describes the final LSM6DSOX, but the sensor module has not yet
-been migrated to it. A full PCB firmware build will remain incomplete until the
-sensor implementation supports the LSM6DSOX. The PCB overlay itself has already
-passed devicetree configuration validation.
+DK and PCB both use SDA P0.27 / SCL P0.26. Their button and LED mappings
+remain distinct; always build/flash with the matching overlay/build directory.
+Hardware communication and accuracy must be verified on a connected LSM6DSOX.
 
 ## Important files
 
 - `src/main.c`: initialization and main event/sample loop
 - `src/button.c`, `src/button.h`: interrupt-driven button event module
-- `src/bluetooth.c`, `src/bluetooth.h`: BLE state and acceleration service
+- `src/bluetooth.c`, `src/bluetooth.h`: BLE state and six-axis motion service
 - `src/led.c`, `src/led.h`: Bluetooth PWM LED and battery RGB states
-- `src/sensor.c`, `src/sensor.h`: current MMA8451 test implementation
+- `src/sensor.c`, `src/sensor.h`: LSM6DSOX six-axis sensor module
 - `nrf52840dk_nrf52840.overlay`: development-kit wiring
 - `boards/musical_baton.overlay`: final PCB wiring
 - `prj.conf`: Zephyr features
@@ -177,24 +201,29 @@ Run builds from an nRF Connect SDK terminal configured for NCS v3.4.0.
 Development kit:
 
 ```sh
-west build --no-sysbuild -p always -b nrf52840dk/nrf52840
+west build --no-sysbuild -p always -d build-lsm6dsox-dk -b nrf52840dk/nrf52840 -- \
+  -DDTC_OVERLAY_FILE=nrf52840dk_nrf52840.overlay
 ```
 
 Custom PCB while it still reuses the DK board definition:
 
 ```sh
-west build --no-sysbuild -p always -b nrf52840dk/nrf52840 -- \
+west build --no-sysbuild -p always -d build-lsm6dsox-pcb -b nrf52840dk/nrf52840 -- \
   -DDTC_OVERLAY_FILE=boards/musical_baton.overlay
 ```
 
-Flash the most recent build:
+Flash the DK build explicitly (use `-d build-lsm6dsox-pcb` for the PCB):
 
 ```sh
-west flash
+west flash -d build-lsm6dsox-dk
 ```
 
 A future improvement is to create a real `musical_baton/nrf52840` board target
 so the PCB hardware description is selected automatically.
+
+The DK startup button message must report pin 11. Pin 19 identifies PCB
+button wiring; both builds use the same board target, so verify the overlay
+and build directory before flashing.
 
 ## Development rules
 
@@ -206,5 +235,7 @@ so the PCB hardware description is selected automatically.
   is intentionally changed.
 - Build the DK target after firmware changes.
 - Validate the PCB overlay after hardware-description changes.
-- Do not assume the PCB sensor code works merely because the DK build succeeds;
-  the MMA8451-to-LSM6DSOX migration is still outstanding.
+- Verify sensor communication and motion readings on hardware; successful builds
+  alone do not verify electrical wiring or accuracy.
+- Update `README.rst` with every project change to reflect current behavior,
+  wiring, build instructions, and limitations.

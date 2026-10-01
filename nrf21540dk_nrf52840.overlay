@@ -1,41 +1,52 @@
+#include <zephyr/dt-bindings/sensor/lsm6dso.h>
+
 /* For more help, browse the devicetree documentation at https://docs.zephyrproject.org/latest/build/dts/index.html
  * You can also visit the nRF DeviceTree extension documentation at https://docs.nordicsemi.com/bundle/nrf-connect-vscode/page/guides/ncs_configure_app.html#devicetree-support-in-the-extension
  */
- &pinctrl {
+&pinctrl {
 	i2c0_default: i2c0_default {
-	    group1 {
-		psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
-			<NRF_PSEL(TWIM_SCL, 0, 27)>;
-	    };
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
+				<NRF_PSEL(TWIM_SCL, 0, 27)>;
+		};
 	};
 
 	i2c0_sleep: i2c0_sleep {
-	    group1 {
-		psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
-			<NRF_PSEL(TWIM_SCL, 0, 27)>;
-		low-power-enable;
-	    };
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 26)>,
+				<NRF_PSEL(TWIM_SCL, 0, 27)>;
+			low-power-enable;
+		};
 	};
-    };
+};
 
-    &i2c0 {
+&i2c0 {
 	compatible = "nordic,nrf-twim";
 	status = "okay";
-
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
+	clock-frequency = <I2C_BITRATE_FAST>;
 
-	clock-frequency = <I2C_BITRATE_STANDARD>;
-
-	mma8451: accelerometer@1c {
-	    compatible = "nxp,mma8451";
-	    reg = <0x1c>;
+	lsm6dsox: imu@6a {
+		/* sensor_init() waits for power-up before initializing the driver. */
+		zephyr,deferred-init;
+		/* Basic LSM6DSOX motion data uses the NCS LSM6DSO driver. */
+		compatible = "st,lsm6dso";
+		reg = <0x6a>;
+		accel-range = <LSM6DSO_DT_FS_4G>;
+		accel-odr = <LSM6DSO_DT_ODR_52Hz>;
+		/* Accelerometer LPF2: 52 Hz / 10 = approximately 5.2 Hz. */
+		accel-lp-filter = <LSM6DSO_DT_LP_ODR_DIV_10>;
+		gyro-range = <LSM6DSO_DT_FS_1000DPS>;
+		gyro-odr = <LSM6DSO_DT_ODR_52Hz>;
+		status = "okay";
 	};
-    };
+};
 
-    / {
+/ {
 	aliases {
+		baton-imu = &lsm6dsox;
 		baton-button = &button0;
 	};
 };
