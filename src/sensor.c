@@ -105,6 +105,8 @@ int sensor_read(struct motion_sample *sample)
 	if (ret < 0) {
 		return ret;
 	}
+	uint32_t timestamp_ms = k_uptime_get_32();
+
 	ret = sensor_channel_get(imu, SENSOR_CHAN_ACCEL_XYZ, accel);
 	if (ret < 0) {
 		return ret;
@@ -115,6 +117,7 @@ int sensor_read(struct motion_sample *sample)
 	}
 
 	*sample = (struct motion_sample) {
+		.timestamp_ms = timestamp_ms,
 		.accel_x_mg = accel_to_mg(&accel[0]),
 		.accel_y_mg = accel_to_mg(&accel[1]),
 		.accel_z_mg = accel_to_mg(&accel[2]),

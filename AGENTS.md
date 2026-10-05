@@ -167,7 +167,11 @@ registers (matching WHO_AM_I value 0x6C). Both DK and PCB overlays configure
 Accelerometer LPF2 uses ODR/10 (approximately 5.2 Hz) via `accel-lp-filter`;
 all console/BLE acceleration samples are filtered in hardware. Gyroscope filter
 settings remain at the driver defaults.
-The application polls every 50 ms (BLE updates remain every 200 ms); interrupts and FIFO are not used.
+The application polls and publishes fresh successful samples every 50 ms as a target;
+interrupts and FIFO are not used. Named intervals live in `src/main.c`. Packet
+timestamps are captured immediately after sensor fetch, before conversion,
+printing, and notification submission. Notifications precede sample prints;
+failed notifications are reported without retries or catch-up bursts.
 Successful six-axis samples print to the 115200-baud serial console approximately
 every 50 ms, one sample per line, even when Bluetooth is inactive.
 `CONFIG_LOG_PRINTK=n` routes prints directly to UART to avoid deferred-log batching.

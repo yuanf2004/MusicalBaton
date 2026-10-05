@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 struct motion_sample {
+	/* Local uptime captured immediately after a successful sensor fetch. */
+	uint32_t timestamp_ms;
 	int16_t accel_x_mg;
 	int16_t accel_y_mg;
 	int16_t accel_z_mg;
@@ -20,7 +22,7 @@ struct motion_sample {
  */
 int sensor_init(void);
 
-/* Fetch all six axes. Call after sensor_init() from the main thread.
+/* Fetch all six axes and timestamp acquisition. Call from the main thread.
  * Returns 0 or a negative error; leaves the sample unchanged on failure.
  */
 int sensor_read(struct motion_sample *sample);

@@ -17,7 +17,7 @@ Current behavior
   smoothing all three acceleration axes before console and BLE output.
 * Polls the latest X/Y/Z acceleration and angular velocity approximately every
   50 milliseconds (20 console samples/second; intermediate IMU samples are discarded).
-  BLE publishes the latest sample approximately every 200 ms (5 updates/second).
+  BLE publishes each fresh successful sample approximately every 50 ms (20 updates/second).
 * Prints initialization and error messages, plus the latest six-axis IMU
   readings approximately every 50 ms, one sample per line, to the serial console even when
   Bluetooth is inactive.
@@ -145,7 +145,9 @@ Each value is a fixed 20-byte, little-endian packet:
 
 Successful LSM6DSOX reads populate all six axes and set both validity bits
 (``flags = 0x03``). The time-synchronized bit remains clear; the timestamp is
-local uptime taken after the sensor fetch. The packet version, UUIDs, and
+local uptime captured immediately after the sensor fetch, before conversion,
+serial printing, and notification submission. This is a host acquisition timestamp,
+not the IMU internal measurement time or phone delivery time. The packet version, UUIDs, and
 20-byte layout are unchanged. Failed sensor reads are not published. Enable
 notifications on the characteristic to receive updates.
 
@@ -159,6 +161,40 @@ connect a BLE client, and subscribe to the motion characteristic. Confirm
 values near zero. Rotate the board to verify angular velocity changes on all
 three axes. Builds verify compilation and devicetree configuration; actual
 sensor communication and motion accuracy still require this hardware check.
+
+Streaming timing verification and next step
+-------------------------------------------
+
+On the DK, subscribe from the iOS app and record packet timestamps, sequence
+numbers, and phone receipt times for at least a minute, including motion and
+button activity. Compare unsigned timestamp differences (allow 32-bit wrap):
+expect roughly 50 ms during normal operation, with larger gaps on failed reads
+or delayed work. Check sequence differences modulo 65536: normally +1 during
+an uninterrupted subscribed session. Sequences count publication attempts,
+including updates while advertising and failed notifications, rather than
+acknowledged delivery; sensor failures produce timestamp gaps without necessarily
+producing sequence gaps. Track notification errors on the UART and distinguish
+packet timing from batches delivered to the app. Repeat connect/disconnect,
+triple-click activation/deactivation, advertising expiry, and LED checks.
+Build success alone does not establish delivery rate or motion accuracy.
+
+After validating this baseline, try both named intervals at 20 ms for roughly
+50 Hz acquisition and streaming. The current 52 Hz IMU produces a new output
+about every 19.2 ms; polling is not synchronized to data-ready, so consider
+interrupt/data-ready acquisition or FIFO for consistent fresh measurements.
+Reduce or decimate sample printing at this rate. Measure the actual negotiated
+BLE connection interval and peripheral latency on iOS; evaluate a requested
+15-20 ms interval with zero peripheral latency and confirm what the phone
+accepts. Connection parameters are documented in the `Zephyr connection API
+<https://docs.zephyrproject.org/latest/doxygen/html/group__bt__conn.html>`_.
+Faster publication alone does not establish lower end-to-end latency.
+
+Retain the 52 Hz ODR and filters for the current baseline. Before precise
+beat-to-audio timing claims, measure accelerometer LPF2 response delay at its
+approximately 5.2 Hz cutoff, gyroscope response, acquisition jitter, BLE delivery
+jitter, phone audio latency, and clock offset/drift (time synchronization is
+still absent). Revisit filter bandwidth and settling if changing ODR/filter
+settings. A 20 ms target is a proposed follow-up, not enabled in this build.
 
 Bluetooth LED troubleshooting
 -----------------------------
@@ -336,13 +372,24 @@ Acceleration is in mg (1000 mg = 1 g). Gyroscope integers are in tenths of a
 degree/second: ``-1`` means -0.1 deg/s and ``25`` means 2.5 deg/s. At rest,
 the acceleration vector should have magnitude near 1000 mg and gyro values
 should be near zero; tilt and rotate the board to check changes. The main
-sampling loop runs approximately every 50 ms, while BLE updates remain at
-approximately 200 ms intervals. ``CONFIG_LOG_PRINTK=n`` sends each ``printk``
+sampling loop and BLE publication both target approximately 50 ms intervals.
+``SENSOR_POLL_INTERVAL_MS`` and ``BLE_PUBLISH_INTERVAL_MS`` in ``src/main.c``
+name these intervals; each successful sample is eligible for one publication
+while Bluetooth is active. Notifications require a subscribed connection. ``CONFIG_LOG_PRINTK=n`` sends each ``printk``
 directly to UART instead of collecting it in the deferred logger for up to a
 second. Each loop prints one fresh sample and uses a new 50 ms deadline,
 without a burst of catch-up prints. Failed reads print
-an error instead of a stale sample. Timing may be delayed by other main-loop
-work. Exit ``screen`` with Ctrl-A, then K, then Y.
+an error instead of a stale sample. Timing may be delayed by sensor I/O,
+scheduling, Bluetooth calls, or button
+handling. Publication precedes sample printing. The longest sample line
+(102 ASCII bytes with six signed 16-bit values) occupies about 8.9 ms at
+115200 baud, 8N1 (about 9 ms with CR/LF translation), below the 50 ms budget;
+formatting and other console messages add overhead. Confirm timing on hardware
+with serial output enabled, and compare against a build with sample printing
+disabled if jitter is significant. Failed reads retain the existing one-second
+backoff and publish nothing. Notification failures print their error code; the
+failed packet is not retried, and the next attempt uses a fresh sample. There
+are no catch-up notification bursts. Exit ``screen`` with Ctrl-A, then K, then Y.
 
 The custom PCB USB-C port supplies power only; its console requires a separate
 UART/debug connection rather than a USB data connection through that port.
@@ -358,6 +405,15 @@ Development rules
 
 Recent changes
 --------------
+
+Streaming validation (2026-10-05): incremental DK and PCB builds passed with
+NCS v3.4.0 and their respective overlays. Hardware timestamp spacing, sequence
+continuity, UART impact, and notification delivery remain to be verified;
+the firmware has not been flashed as part of this change.
+
+* Increased BLE publication from 200 ms to a 50 ms target, using each fresh
+  successful sample and acquisition timestamps; moved sample prints after
+  publication and retained notification error reporting without retries.
 
 * Replaced the MMA8451 implementation with LSM6DSOX six-axis polling through
   the Zephyr sensor API; migrated the associated overlays and driver config.

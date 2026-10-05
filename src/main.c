@@ -7,6 +7,9 @@
 #include "led.h"
 #include "sensor.h"
 
+#define SENSOR_POLL_INTERVAL_MS 50
+#define BLE_PUBLISH_INTERVAL_MS 50
+
 K_MSGQ_DEFINE(button_event_queue,
 	      sizeof(struct button_event),
 	      8,
@@ -50,7 +53,8 @@ int main(void)
 
 	while (1) {
 		/* Use a fresh deadline each cycle; do not catch up in bursts. */
-		int64_t next_sample_ms = k_uptime_get() + 50;
+		int64_t cycle_start_ms = k_uptime_get();
+		int64_t next_sample_ms = cycle_start_ms + SENSOR_POLL_INTERVAL_MS;
 		struct button_event event;
 		struct motion_sample sample;
 
@@ -95,19 +99,13 @@ int main(void)
 			continue;
 		}
 
-		/* Print only successful samples, independently of Bluetooth state. */
-		int64_t now_ms = k_uptime_get();
-
-		printk("IMU accel [mg]: X=%d Y=%d Z=%d | "
-		       "gyro [0.1 deg/s]: X=%d Y=%d Z=%d\n",
-		       sample.accel_x_mg, sample.accel_y_mg,
-		       sample.accel_z_mg, sample.gyro_x_dps_tenths,
-		       sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths);
-
-		if (bluetooth_is_active() && now_ms >= next_ble_ms) {
-			next_ble_ms = now_ms + 200;
+		/* Gate on cycle start so fetch jitter cannot skip alternate samples.
+		 * Never retry a failed notification or catch up missed deadlines.
+		 */
+		if (bluetooth_is_active() && cycle_start_ms >= next_ble_ms) {
+			next_ble_ms = cycle_start_ms + BLE_PUBLISH_INTERVAL_MS;
 			const struct bluetooth_motion_sample motion_sample = {
-				.timestamp_ms = k_uptime_get_32(),
+				.timestamp_ms = sample.timestamp_ms,
 				.flags = BLUETOOTH_MOTION_FLAG_ACCEL_VALID |
 					 BLUETOOTH_MOTION_FLAG_GYRO_VALID,
 				.accel_x_mg = sample.accel_x_mg,
@@ -125,6 +123,13 @@ int main(void)
 				       ret);
 			}
 		}
+
+		/* UART output follows publication so it cannot delay this notification. */
+		printk("IMU accel [mg]: X=%d Y=%d Z=%d | "
+		       "gyro [0.1 deg/s]: X=%d Y=%d Z=%d\n",
+		       sample.accel_x_mg, sample.accel_y_mg,
+		       sample.accel_z_mg, sample.gyro_x_dps_tenths,
+		       sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths);
 
 		k_sleep(K_TIMEOUT_ABS_MS(next_sample_ms));
 	}
