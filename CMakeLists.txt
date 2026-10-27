@@ -7,7 +7,10 @@ project(MusicalBaton)
 target_sources(app PRIVATE
   src/main.c
   src/sensor.c
+  src/conducting.c
   src/bluetooth.c
   src/button.c
   src/led.c
 )
+
+target_link_libraries(app PRIVATE m)

@@ -3,8 +3,9 @@ Musical Baton
 
 Musical Baton is a Zephyr application for an nRF52840 development board
 connected to an LSM6DSOX six-axis IMU. The current firmware reads motion
-data over I2C and exposes it over Bluetooth Low Energy (BLE). It does not
-yet generate music or interpret conducting gestures.
+data over I2C and exposes it over Bluetooth Low Energy (BLE). An experimental
+six-axis detector reports conducting beat candidates to the console. It does
+not generate music or classify conducting patterns/time signatures.
 
 Current behavior
 ----------------
@@ -16,14 +17,18 @@ Current behavior
 * Enables the accelerometer hardware LPF2 at ODR/10 (approximately 5.2 Hz),
   smoothing all three acceleration axes before console and BLE output.
 * Polls the latest X/Y/Z acceleration and angular velocity approximately every
-  50 milliseconds (20 console samples/second; intermediate IMU samples are discarded).
-  BLE publishes each fresh successful sample approximately every 50 ms (20 updates/second).
-* Prints initialization and error messages, plus the latest six-axis IMU
-  readings approximately every 50 ms, one sample per line, to the serial console even when
-  Bluetooth is inactive.
+  20 milliseconds (roughly 50 polls/second; polling is not data-ready synchronized).
+  BLE retains a 50 ms minimum publication interval, checked on each poll; normal
+  20 ms cycles yield roughly 60 ms between notifications (about 17 updates/second).
+* Prints initialization, errors, calibration status, and beat/BPM messages.
+  Continuous six-axis console output is disabled for beat testing; set
+  ``PRINT_MOTION_SAMPLES`` to ``1`` in ``src/main.c`` and rebuild to restore it.
+  Sensor acquisition and BLE streaming continue with sample prints disabled.
 * Initializes Bluetooth without advertising after startup.
 * Each debounced button press prints ``Baton button pressed``.
 * Triple-pressing the user button toggles Bluetooth availability.
+* Double-pressing the user button restarts beat-detector calibration. Hold still
+  afterward until ``Beat detector calibrated`` appears; the BLE connection stays up.
 * When enabled, advertises as ``Smart Baton`` and accepts one connection.
 * If no phone connects within 60 seconds, stops advertising, turns the breathing
   LED off, and marks Bluetooth inactive. Triple-press starts a new window.
@@ -36,6 +41,134 @@ Current behavior
   when connected, breathes when advertising, or turns off when inactive.
 * Holding the user button for ten seconds reboots the baton.
 * Allows a BLE client to read six-axis motion or subscribe to notifications.
+
+Experimental conducting detector
+--------------------------------
+
+``src/conducting.c`` adapts GestureSim's stroke-braking idea to real IMU data.
+Its interface in ``src/conducting.h`` is ordinary C, independent of Zephyr and
+pin mappings. The main loop feeds successful sensor samples after BLE publication.
+Beat events print to the console and notify subscribed phones using a separate
+12-byte BLE characteristic; the existing 20-byte motion packet is unchanged.
+
+Hold the baton still for at least one second after startup until
+``Beat detector calibrated`` appears. Calibration requires acceleration near 1 g,
+low angular speed, and a stable acceleration vector; it estimates gyro bias.
+It cannot prove stillness; sufficiently slow motion can bias calibration.
+A sampling gap longer than 250 ms resets calibration and tempo history.
+To recalibrate manually, double-click DK Button 1 (the normal baton button on the
+PCB), then hold still. The existing click collector waits 600 ms after the final
+release to distinguish two clicks from three. The console then prints
+``Recalibration requested: hold still for one second``. The main thread clears
+gyro bias, gravity, stroke, and tempo history and restores the selected sensitivity.
+No beat events are produced during calibration; raw sampling/BLE motion continue.
+Completion prints ``Beat detector calibrated``. Motion can extend the stillness
+wait. Triple-click and ten-second reboot behavior are unchanged. In the phone's
+profile mode, use **Next beat is 1** if the calibration pause loses measure alignment.
+Duplicate/backward timestamps are ignored; normal 32-bit uptime wrap is supported.
+A caller replaying a new recording must explicitly reset the detector.
+
+Processing uses all six axes:
+
+* Propagate a body-frame gravity vector with bias-corrected gyroscope rotation.
+  Apply weak accelerometer correction near 1 g, at low rotation, and with a small
+  gravity residual. Subtract estimated gravity for acceleration evidence.
+* Smooth angular-speed magnitude with a 15 ms time constant. Arm at 30 deg/s or above;
+  require a fall below 55% of the stroke peak and to at most 30 deg/s.
+  Trigger immediately on that sample without waiting for a rebound.
+* Require at least 80 mg of gravity-subtracted acceleration during the stroke.
+  Require at least 100 ms from stroke arming, and expire strokes after 1.5 seconds.
+  Keep beats at least 250 ms apart. After a trigger, require rising speed at or above
+  30 deg/s to arm another stroke. Holding still cannot repeatedly trigger beats.
+  No predicted beats are generated.
+* Timestamp the threshold-crossing sample; detection time currently equals that
+  sample timestamp. These are not exact physical stop times. Estimate BPM from up to five measured intervals after three intervals
+  agree within 20% of their median. Zero BPM means insufficient/inconsistent
+  evidence. Tempo history expires after two seconds without a beat.
+
+Illustrative output::
+
+   BEAT: t=2400 detected=2400 strength=71 BPM=100.0
+
+``strength`` is a heuristic 0-100 score, not a probability. Thresholds need tuning
+on labeled recordings. Shaking can trigger candidates; translation-only strokes,
+small gestures, smooth circular motion, and strokes without a clear angular-speed
+drop may be missed. Low angular speed does not prove zero translational velocity. Norm-based features require no configured baton axis but
+cannot identify downbeat direction, beat number, or time signature. Gravity may
+drift under sustained acceleration; differing hardware filter delays can produce
+acceleration residuals even during pure rotation.
+
+Polling now targets 20 ms; BLE retains its 50 ms publication gate (roughly 60 ms
+between sends on 20 ms cycles). The 52 Hz IMU and hardware filters are unchanged.
+Sampling, hardware filtering, and smoothing still add latency; equal event and
+detection timestamps do not mean zero physical motion-to-output delay. Beat lines add UART load.
+Measure timing with logging enabled and disabled before performance claims.
+
+To test on the DK, flash ``west flash -d build-lsm6dsox-dk``, open the TTY at
+115200 baud, and hold still until ``Beat detector calibrated``. Make a clear
+rotating stroke, then stop and hold: expect one ``BEAT:`` line, with no repeats
+while still. Repeat strokes to see BPM settle; zero BPM does not suppress beat
+output. Raw acceleration/gyro printing remains disabled. If IMU initialization
+fails, detection cannot start.
+
+The true return from ``conducting_process`` is the event boundary for both the
+console and a BLE beat notification. The companion iPhone app's Conducting Mode
+subscribes to beat events and plays a prepared click while enabled. The MCU sends
+an event, not audio data. It does not require stable BPM or raw-motion subscription.
+No speaker/audio playback is implemented on the MCU itself.
+
+GestureSim review and upgrade recommendations
+--------------------------------------------
+
+Reviewed ``GestureSIm/GestureSim/GestureSim/Algorithms/conducting-motion-lab``.
+Its algorithms use normalized pointer X/Y positions and derivatives, not trained
+weights. Its computed ``omega`` is planar trajectory turning rate, not a directly
+interchangeable gyro axis. The simulator was not modified by this firmware change.
+
+* ``App.tsx`` initializes ``extrema`` and offers ``threshold``; neither exists in
+  ``createAlgorithm``, so both silently fall back to ``IctusDetector``. Several
+  descriptions refer to obsolete strategies. Fix UI/factory mappings before
+  comparing algorithms.
+* Algorithms impose a 300 ms minimum interval; some predict missing beats.
+  Separate measured beats from predictions and clear tempo after stream gaps.
+* The peak predictor uses a fixed 30% period offset. Its latency comments are
+  not evidence of performance on this IMU or real conducting recordings.
+
+Recommended next steps, in order:
+
+1. Record timestamped six-axis packets and sequence numbers with independently
+   labeled ictus times. Include different people/grips, 60-180 BPM, 2/3/4 patterns,
+   tempo changes, pauses, walking, and pickup/putdown. Evaluate precision/recall,
+   false beats per idle minute, tempo error, signed timing error, and confirmation
+   latency. Split evaluation by person/session.
+2. Add a separate IMU replay input to GestureSim: decode mg and 0.1 deg/s, validate
+   packet version/flags, detect sequence gaps, and use device timestamps. Do not
+   feed acceleration into pointer X/Y or double-integrate it into position.
+   Accelerometers observe both gravity and motion; see
+   `NXP AN3461 <https://www.nxp.com/docs/en/application-note/AN3461.pdf>`_.
+3. Evaluate roughly 50 Hz acquisition/publication and data-ready/FIFO operation,
+   decimating console prints. Measure the existing 5.2 Hz filter delay before
+   selecting wider bandwidth. Revalidate overlays if hardware settings change.
+4. Learn a conducting plane or calibrate grip orientation for directional and
+   pattern features. Use this detector as a baseline; train a small temporal
+   classifier once labeled recordings justify it, including a non-conducting class.
+5. Add separately marked prediction/audio scheduling only after measured accuracy
+   and device-to-phone clock mapping are established.
+
+Host regression tests
+---------------------
+
+Run deterministic C tests without Zephyr::
+
+   cc -std=c11 -Wall -Wextra -Werror -Isrc tests/conducting_test.c src/conducting.c -lm -o /tmp/baton-conducting-test
+   /tmp/baton-conducting-test
+
+Tests cover synthetic strokes at multiple sample intervals, rejection of gyro-only
+and acceleration-only motion, stop-without-rebound triggers, no repeated triggers
+while held still, rearming on a new stroke, calibration, gaps, duplicate/backward times,
+uptime wrap, and gravity tracking during tilt. They do not establish real conducting
+accuracy. Flash the matching build, hold still to calibrate, and compare candidate
+and confirmation timestamps against independently labeled hardware recordings.
 
 Hardware and configuration
 --------------------------
@@ -88,7 +221,7 @@ Use an installed Nordic nRF Connect SDK and its matching toolchain. In the
 nRF Connect extension for VS Code, open this directory as the application,
 create a build configuration for your development board, and select the
 matching overlay if it is not selected automatically. Build and flash the
-connected board, then open its serial console to view initialization, errors, and IMU readings.
+connected board, then open its serial console to view initialization, errors, and beat candidates.
 
 From an NCS v3.4.0 terminal, build the development kit::
 
@@ -151,6 +284,75 @@ not the IMU internal measurement time or phone delivery time. The packet version
 20-byte layout are unchanged. Failed sensor reads are not published. Enable
 notifications on the characteristic to receive updates.
 
+Conducting profile settings
+---------------------------
+
+The companion app saves named profiles locally with beats per measure (2/3/4),
+beat-1 and other-beat sounds, and sensitivity. These are manual configuration
+profiles, not trained gesture templates. The MCU detects beats and the phone counts
+them and selects sounds; the beat event's sequence is not a musical beat number.
+Sound choice and meter need no extra byte in the beat packet.
+
+New characteristic ``12345678-1234-5678-1234-56789abcdef3`` in the existing service
+supports read and write-with-response. Its four-byte packet is
+``[1, 1, sensitivityID, 0]``: version 1, set-sensitivity command 1, preset, reserved.
+Read returns the current requested setting in the same format. Wrong length,
+nonzero offset, prepared writes, and unsupported bytes/presets are rejected.
+
+================= ============ ============ ======================
+Preset / ID       Arm speed    Accel floor  Braking fraction
+================= ============ ============ ======================
+Balanced / 0      30 deg/s     80 mg        below 55% of peak
+Deliberate / 1    40 deg/s     120 mg       below 45% of peak
+Gentle / 2        22 deg/s     55 mg        below 60% of peak
+================= ============ ============ ======================
+
+Balanced preserves the existing default. All retain the 30 deg/s stop ceiling,
+100 ms minimum stroke, 250 ms beat separation, and fresh-motion rearm requirement.
+Gentle may increase false positives. BLE callbacks only store an atomic preset
+request; the main sampling thread applies changes before detection and clears
+stroke/tempo history while preserving calibration. A sensor gap recalibrates but
+keeps the selected preset. Reboot resets to Balanced. There is no flash storage
+for profiles in the MCU. The phone reapplies its selected preset on every activation,
+waits for write acknowledgement/readback and subscription, then enables sounds.
+Readback confirms the request, not the exact sample at which it took effect.
+
+In the app, open Saved Profiles to create/select one, then enable Conducting Mode.
+The next detected event counts as beat 1; Test Beat 1 Sound and Test Other Beat
+Sound preview the voices without advancing the measure. Next beat is 1 resets
+alignment. A >2 s event pause or BLE sequence gap pauses sound until that reset;
+missed/extra MCU detections may still shift the count. Automatic gesture-pattern
+recognition is not implemented. Validate sensitivity and audio timing on hardware.
+
+Bluetooth beat events
+---------------------
+
+Characteristic ``12345678-1234-5678-1234-56789abcdef2`` under the existing motion
+service is notify-only. Subscribe from the companion app's Conducting Mode to
+receive fresh detected beats. There is no readable last beat or replay on subscribe.
+The fixed 12-byte little-endian format is:
+
+* Byte 0: version 1; byte 1: event type 1 (detected beat).
+* Bytes 2-3: unsigned 16-bit beat sequence.
+* Bytes 4-7: unsigned 32-bit event uptime in milliseconds.
+* Bytes 8-9: BPM times 10; zero indicates an unstable/unavailable estimate.
+* Byte 10: motion strength, 0-100; byte 11: reserved, zero.
+
+Beat sequences advance on each detection, including while inactive/unsubscribed,
+and wrap at 65536. Timestamp wrap is unchanged. Notifications use the live
+connection's subscription, independently of the 50 ms raw-motion gate, and precede
+the beat's UART line. Failed notifications print an error and are not retried.
+The phone must connect and subscribe; triple-click still activates Bluetooth.
+No events are stored for future connections. Radio/app delivery is not guaranteed
+by a successful local send; measure motion-to-sound latency on hardware.
+
+Flash this firmware, install the updated mobile app, connect, open Conducting
+Mode, and enable its toggle. Use the two Test Sound buttons to check the phone's media volume/output.
+Hold still to calibrate, then make strokes and compare clicks against UART beats.
+Closing the screen, app inactivity, or disconnection stops the app's sound mode.
+Reconnection requires enabling the mode again. Existing motion clients remain
+compatible because the motion UUID and packet format have not changed.
+
 Hardware verification
 ---------------------
 
@@ -168,7 +370,7 @@ Streaming timing verification and next step
 On the DK, subscribe from the iOS app and record packet timestamps, sequence
 numbers, and phone receipt times for at least a minute, including motion and
 button activity. Compare unsigned timestamp differences (allow 32-bit wrap):
-expect roughly 50 ms during normal operation, with larger gaps on failed reads
+expect roughly 60 ms between BLE packets during normal 20 ms polling, with larger gaps on failed reads
 or delayed work. Check sequence differences modulo 65536: normally +1 during
 an uninterrupted subscribed session. Sequences count publication attempts,
 including updates while advertising and failed notifications, rather than
@@ -178,8 +380,8 @@ packet timing from batches delivered to the app. Repeat connect/disconnect,
 triple-click activation/deactivation, advertising expiry, and LED checks.
 Build success alone does not establish delivery rate or motion accuracy.
 
-After validating this baseline, try both named intervals at 20 ms for roughly
-50 Hz acquisition and streaming. The current 52 Hz IMU produces a new output
+Acquisition now targets 20 ms. After validating this baseline, optionally reduce
+the BLE publication interval to 20 ms as well for roughly 50 Hz streaming. The current 52 Hz IMU produces a new output
 about every 19.2 ms; polling is not synchronized to data-ready, so consider
 interrupt/data-ready acquisition or FIFO for consistent fresh measurements.
 Reduce or decimate sample printing at this rate. Measure the actual negotiated
@@ -194,7 +396,7 @@ beat-to-audio timing claims, measure accelerometer LPF2 response delay at its
 approximately 5.2 Hz cutoff, gyroscope response, acquisition jitter, BLE delivery
 jitter, phone audio latency, and clock offset/drift (time synchronization is
 still absent). Revisit filter bandwidth and settling if changing ODR/filter
-settings. A 20 ms target is a proposed follow-up, not enabled in this build.
+settings. The 20 ms acquisition target is enabled; 20 ms BLE streaming is not.
 
 Bluetooth LED troubleshooting
 -----------------------------
@@ -253,7 +455,7 @@ produce ``Detected 3 clicks`` and ``Triple-click detected`` approximately
 600 ms after the final release. The LED then breathes while advertising.
 If individual press messages are missing, check the selected overlay and
 button connection. If presses print but the count is different, check click
-timing. The 50 ms IMU output continues during button handling.
+timing. IMU sampling continues during button handling.
 
 If startup prints ``Button initialized: ... pin 19`` while using the DK,
 the flashed firmware uses the custom-PCB button mapping. The DK build should
@@ -320,8 +522,9 @@ For baton testing, start with low-pass filtering and compare stationary noise
 and quick conducting motions before and after, including peak magnitude and
 response delay. High-pass filtering removes DC/gravity information, so it is
 not a default replacement for acceleration used for tilt/orientation. Filtering
-also does not calibrate gyro zero-rate bias. The firmware reads at 20 Hz and
-BLE publishes at about 5 Hz; evaluate bandwidth against the rate of the data
+also does not calibrate gyro zero-rate bias (the experimental detector estimates
+bias internally without changing raw samples). The firmware polls at roughly 50 Hz and
+BLE publishes at about 17 Hz with the current gate; evaluate bandwidth against the rate of the data
 actually consumed, or increase acquisition/publication rates for faster motions.
 The hardware filter applies to all acceleration samples sent to the terminal
 and BLE; no software averaging is added. A low-pass filter preserves the
@@ -363,8 +566,10 @@ port, for example::
 
    screen /dev/cu.usbmodemYOUR_PORT 115200
 
-A successful sample is printed approximately every 50 ms, without needing
-to enable Bluetooth::
+Raw sample printing is currently disabled so beat/BPM messages are easier to see.
+To restore it, set ``PRINT_MOTION_SAMPLES`` to ``1`` in ``src/main.c``, rebuild,
+and flash. With that option enabled, successful samples print approximately every
+20 ms without needing to enable Bluetooth::
 
    IMU accel [mg]: X=12 Y=-8 Z=1001 | gyro [0.1 deg/s]: X=0 Y=-1 Z=2
 
@@ -372,18 +577,19 @@ Acceleration is in mg (1000 mg = 1 g). Gyroscope integers are in tenths of a
 degree/second: ``-1`` means -0.1 deg/s and ``25`` means 2.5 deg/s. At rest,
 the acceleration vector should have magnitude near 1000 mg and gyro values
 should be near zero; tilt and rotate the board to check changes. The main
-sampling loop and BLE publication both target approximately 50 ms intervals.
+sampling loop targets 20 ms; BLE retains a 50 ms minimum gate, typically producing
+60 ms publication spacing with this polling loop.
 ``SENSOR_POLL_INTERVAL_MS`` and ``BLE_PUBLISH_INTERVAL_MS`` in ``src/main.c``
-name these intervals; each successful sample is eligible for one publication
-while Bluetooth is active. Notifications require a subscribed connection. ``CONFIG_LOG_PRINTK=n`` sends each ``printk``
+name these intervals; only samples fetched after the publication gate expires
+are published while Bluetooth is active. Notifications require a subscribed connection. ``CONFIG_LOG_PRINTK=n`` sends each ``printk``
 directly to UART instead of collecting it in the deferred logger for up to a
-second. Each loop prints one fresh sample and uses a new 50 ms deadline,
+second. With sample printing enabled, each loop prints one fresh sample and uses a new 20 ms deadline,
 without a burst of catch-up prints. Failed reads print
 an error instead of a stale sample. Timing may be delayed by sensor I/O,
 scheduling, Bluetooth calls, or button
 handling. Publication precedes sample printing. The longest sample line
 (102 ASCII bytes with six signed 16-bit values) occupies about 8.9 ms at
-115200 baud, 8N1 (about 9 ms with CR/LF translation), below the 50 ms budget;
+115200 baud, 8N1 (about 9 ms with CR/LF translation), below the 20 ms budget;
 formatting and other console messages add overhead. Confirm timing on hardware
 with serial output enabled, and compare against a build with sample printing
 disabled if jitter is significant. Failed reads retain the existing one-second
@@ -405,6 +611,60 @@ Development rules
 
 Recent changes
 --------------
+
+Manual recalibration: a completed double-click now resets the beat detector on
+the main thread, preserves the selected sensitivity, and prompts for a one-second
+still period. Bluetooth remains connected and raw motion continues. Double-click
+selection uses the existing 600 ms collection window; triple-click still toggles BLE.
+
+Saved-profile support: added the ``...def3`` read/write settings characteristic
+and three detector sensitivity presets. Phone profiles select meter and voices;
+the 12-byte beat notification remains compatible. DK build and detector host tests
+passed, including Gentle acceptance and preset retention across sampling gaps.
+No board wiring or hardware filter changes. Hardware and phone testing remain.
+
+
+Conducting Mode transport: added a notify-only beat characteristic (``...def2``)
+with a versioned 12-byte event packet. The MCU sends each fresh beat to a subscribed
+phone at the console event boundary; no retries/backlog or changes to the motion
+packet. DK build passed. Live BLE-to-audio timing requires testing with the updated
+mobile app; neither firmware flashing nor phone installation was performed.
+
+
+Latency experiment: increased polling from 50 ms to 20 ms and reduced angular-speed
+smoothing from 30 ms to 15 ms. Raw sample prints remain disabled. The sensor ODR,
+hardware filters, beat thresholds, and 50 ms BLE gate are unchanged; the gate now
+normally produces 60 ms BLE spacing because it is checked on 20 ms polling cycles.
+Host regressions include an ideal abrupt-stop test at the new polling rate.
+Actual response delay and false-trigger rate require a hardware comparison.
+
+
+Sensitivity tuning: lowered stroke arming from 40 to 30 deg/s and acceleration
+corroboration from 120 to 80 mg. Braking now triggers below 55% of peak speed
+(previously 45%); the 30 deg/s stop ceiling, 100 ms minimum stroke duration,
+250 ms beat separation, and fresh-motion rearm requirement remain. BPM stability
+rules are unchanged. This may recover gentle strokes but can increase false
+triggers; validate with both conducting and ordinary movements. Host tests cover
+35 deg/s, 100 mg strokes and small idle disturbances. Hardware improvement has
+not yet been measured.
+
+Stop-trigger console prototype: replaced rebound confirmation with stroke-braking
+threshold detection and a fresh-motion rearm requirement. Prints ``BEAT:`` at the
+future BLE event boundary. Host tests include two move-then-hold strokes with one
+beat each. DK build and host regression tests passed; hardware detection accuracy
+and latency still need validation. No flashing or audio/BLE event implementation.
+
+Beat-console testing: disabled continuous acceleration/gyro sample printing via
+``PRINT_MOTION_SAMPLES=0``. Calibration, beat/BPM, and error messages remain
+enabled. Acquisition, BLE streaming, and detection logic are unchanged.
+
+Conducting prototype (2026-10-26): added calibrated six-axis gravity estimation,
+stroke/rebound candidate detection, conservative tempo reporting, and host tests.
+NCS v3.4.0 DK build and host C regression tests passed. The macOS sanitizer run
+did not complete; the successful host run used the macOS 14.4 SDK without
+sanitizers. No firmware was flashed and no real conducting accuracy was measured.
+Removed a pre-existing stray backtick in ``src/button.c`` that blocked compilation.
+No overlay, BLE protocol, or polling-rate changes were made.
 
 Streaming validation (2026-10-05): incremental DK and PCB builds passed with
 NCS v3.4.0 and their respective overlays. Hardware timestamp spacing, sequence

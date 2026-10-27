@@ -28,11 +28,20 @@ int bluetooth_init(void);
 int bluetooth_activate(void);
 int bluetooth_deactivate(void);
 bool bluetooth_is_active(void);
+/* Requested sensitivity, set via versioned ...def3 read/write characteristic. */
+uint8_t bluetooth_conducting_sensitivity(void);
 
 /*
  * Update and optionally notify the fixed 20-byte motion packet.
  * Sequence numbers are assigned by the Bluetooth module.
  */
 int bluetooth_publish(const struct bluetooth_motion_sample *sample);
+
+/* Notify a fresh beat only; no retained/readable event and no retries.
+ * 12 bytes: version=1, type=1, sequence LE16, uptime LE32, BPM*10 LE16,
+ * strength (0..100), reserved=0. UUID ends in def2, under the motion service.
+ */
+int bluetooth_publish_beat(uint32_t timestamp_ms, uint16_t bpm_tenths,
+			   uint8_t strength);
 
 #endif

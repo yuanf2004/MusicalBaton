@@ -35,6 +35,49 @@ static struct bt_uuid_128 motion_service_uuid =
 static struct bt_uuid_128 motion_data_uuid =
 	BT_UUID_INIT_128(BT_UUID_MOTION_DATA_VAL);
 
+static struct bt_uuid_128 beat_data_uuid = BT_UUID_INIT_128(
+	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef2));
+static uint16_t beat_sequence;
+static struct bt_uuid_128 conducting_settings_uuid = BT_UUID_INIT_128(
+	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef3));
+static atomic_t conducting_sensitivity;
+
+uint8_t bluetooth_conducting_sensitivity(void)
+{
+	return (uint8_t)atomic_get(&conducting_sensitivity);
+}
+
+static ssize_t read_conducting_settings(struct bt_conn *conn,
+	const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
+{
+	uint8_t packet[] = {1, 1, bluetooth_conducting_sensitivity(), 0};
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, packet, sizeof(packet));
+}
+
+static ssize_t write_conducting_settings(struct bt_conn *conn,
+	const struct bt_gatt_attr *attr, const void *buf, uint16_t len,
+	uint16_t offset, uint8_t flags)
+{
+	ARG_UNUSED(conn);
+	ARG_UNUSED(attr);
+	if (flags & BT_GATT_WRITE_FLAG_PREPARE) {
+		return BT_GATT_ERR(BT_ATT_ERR_NOT_SUPPORTED);
+	}
+	if (offset != 0) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+	}
+	if (len != 4) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+	}
+	const uint8_t *packet = buf;
+	if (packet[0] != 1 || packet[1] != 1 || packet[2] > 2 || packet[3] != 0) {
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
+	/* The sampling thread applies this; never mutate detector state in BLE. */
+	atomic_set(&conducting_sensitivity, packet[2]);
+	return len;
+}
+
 /*
  * Fixed 20-byte motion packet, encoded explicitly in little-endian order:
  *
@@ -129,7 +172,15 @@ BT_GATT_SERVICE_DEFINE(
 	BT_GATT_CCC(
 		motion_ccc_changed,
 		BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
-	)
+	),
+	/* Notify-only: subscribing must never replay an old beat as a sound. */
+	BT_GATT_CHARACTERISTIC(&beat_data_uuid.uuid, BT_GATT_CHRC_NOTIFY,
+			       BT_GATT_PERM_NONE, NULL, NULL, NULL),
+	BT_GATT_CCC(NULL, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+	BT_GATT_CHARACTERISTIC(&conducting_settings_uuid.uuid,
+		BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+		BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
+		read_conducting_settings, write_conducting_settings, NULL)
 );
 
 /*
@@ -450,5 +501,34 @@ int bluetooth_publish(const struct bluetooth_motion_sample *sample)
 	}
 
 	k_mutex_unlock(&motion_packet_mutex);
+	return ret;
+}
+
+int bluetooth_publish_beat(uint32_t timestamp_ms, uint16_t bpm_tenths,
+			   uint8_t strength)
+{
+	uint8_t packet[12] = {1, 1};
+	sys_put_le16(beat_sequence++, &packet[2]);
+	sys_put_le32(timestamp_ms, &packet[4]);
+	sys_put_le16(bpm_tenths, &packet[8]);
+	packet[10] = strength;
+	struct bt_conn *conn = NULL;
+
+	/* Take a reference under the lock; notification may block, so send after
+	 * releasing it. CCC state belongs to this specific live connection.
+	 */
+	k_mutex_lock(&connection_mutex, K_FOREVER);
+	if (atomic_get(&bluetooth_active) && current_connection != NULL) {
+		conn = bt_conn_ref(current_connection);
+	}
+	k_mutex_unlock(&connection_mutex);
+	if (conn == NULL) {
+		return 0;
+	}
+	int ret = 0;
+	if (bt_gatt_is_subscribed(conn, &motion_service.attrs[5], BT_GATT_CCC_NOTIFY)) {
+		ret = bt_gatt_notify(conn, &motion_service.attrs[5], packet, sizeof(packet));
+	}
+	bt_conn_unref(conn);
 	return ret;
 }

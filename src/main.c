@@ -4,11 +4,14 @@
 
 #include "bluetooth.h"
 #include "button.h"
+#include "conducting.h"
 #include "led.h"
 #include "sensor.h"
 
-#define SENSOR_POLL_INTERVAL_MS 50
+#define SENSOR_POLL_INTERVAL_MS 20
 #define BLE_PUBLISH_INTERVAL_MS 50
+/* Enable temporarily when inspecting raw sensor measurements. */
+#define PRINT_MOTION_SAMPLES 0
 
 K_MSGQ_DEFINE(button_event_queue,
 	      sizeof(struct button_event),
@@ -25,6 +28,8 @@ int main(void)
 {
 	int ret;
 	int64_t next_ble_ms;
+	struct conducting_detector detector;
+	conducting_reset(&detector);
 
 	ret = led_init();
 	if (ret < 0) {
@@ -49,6 +54,8 @@ int main(void)
 	}
 
 	printk("Triple-press to toggle Bluetooth\n");
+	printk("Double-press to recalibrate: hold still afterward\n");
+	printk("Experimental beat detector: hold still for one second to calibrate\n");
 	next_ble_ms = k_uptime_get();
 
 	while (1) {
@@ -76,7 +83,15 @@ int main(void)
 				printk("Detected %u clicks\n",
 				       event.click_count);
 
-				if (event.click_count == 3) {
+				if (event.click_count == 2) {
+					/* Reset on the main thread, after the complete click
+					 * sequence; a triple-click must not recalibrate.
+					 */
+					conducting_reset(&detector);
+					conducting_set_sensitivity(&detector,
+						bluetooth_conducting_sensitivity());
+					printk("Recalibration requested: hold still for one second\n");
+				} else if (event.click_count == 3) {
 					printk("Triple-click detected\n");
 
 					if (bluetooth_is_active()) {
@@ -125,11 +140,30 @@ int main(void)
 		}
 
 		/* UART output follows publication so it cannot delay this notification. */
+		bool was_calibrated = detector.calibrated;
+		conducting_set_sensitivity(&detector, bluetooth_conducting_sensitivity());
+		struct conducting_beat beat;
+		if (conducting_process(&detector, &sample, &beat)) {
+			ret = bluetooth_publish_beat(beat.timestamp_ms, beat.bpm_tenths,
+						     beat.strength);
+			if (ret < 0) {
+				printk("Bluetooth beat notification failed: %d\n", ret);
+			}
+			printk("BEAT: t=%u detected=%u strength=%u BPM=%u.%u\n",
+			       beat.timestamp_ms, beat.detected_ms, beat.strength,
+			       beat.bpm_tenths / 10, beat.bpm_tenths % 10);
+		}
+		if (detector.calibrated != was_calibrated) {
+			printk(detector.calibrated ? "Beat detector calibrated\n" :
+			       "Beat detector reset: hold still for one second\n");
+		}
+#if PRINT_MOTION_SAMPLES
 		printk("IMU accel [mg]: X=%d Y=%d Z=%d | "
 		       "gyro [0.1 deg/s]: X=%d Y=%d Z=%d\n",
 		       sample.accel_x_mg, sample.accel_y_mg,
 		       sample.accel_z_mg, sample.gyro_x_dps_tenths,
 		       sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths);
+#endif
 
 		k_sleep(K_TIMEOUT_ABS_MS(next_sample_ms));
 	}
