@@ -8,7 +8,8 @@
 #include "led.h"
 #include "sensor.h"
 
-#define SENSOR_POLL_INTERVAL_MS 20
+/* 1 / 208 Hz, rounded to the nearest whole microsecond. */
+#define SENSOR_POLL_INTERVAL_US 4808
 #define BLE_PUBLISH_INTERVAL_MS 50
 /* Enable temporarily when inspecting raw sensor measurements. */
 #define PRINT_MOTION_SAMPLES 0
@@ -60,8 +61,9 @@ int main(void)
 
 	while (1) {
 		/* Use a fresh deadline each cycle; do not catch up in bursts. */
-		int64_t cycle_start_ms = k_uptime_get();
-		int64_t next_sample_ms = cycle_start_ms + SENSOR_POLL_INTERVAL_MS;
+		int64_t cycle_start_us = k_ticks_to_us_floor64(k_uptime_ticks());
+		int64_t cycle_start_ms = cycle_start_us / 1000;
+		int64_t next_sample_us = cycle_start_us + SENSOR_POLL_INTERVAL_US;
 		struct button_event event;
 		struct motion_sample sample;
 
@@ -165,6 +167,6 @@ int main(void)
 		       sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths);
 #endif
 
-		k_sleep(K_TIMEOUT_ABS_MS(next_sample_ms));
+		k_sleep(K_TIMEOUT_ABS_US(next_sample_us));
 	}
 }

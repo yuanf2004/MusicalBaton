@@ -5,16 +5,17 @@
 
 /* Physical units: mg, degrees/second, milliseconds. Tune on labeled recordings. */
 static const struct {
-	float min_stroke_dps, min_accel_mg, braking_fraction;
+	float min_stroke_dps, min_accel_mg, release_fraction;
 } sensitivity_settings[] = {
 	{30.0f, 80.0f, 0.55f}, /* Balanced: existing default. */
 	{40.0f, 120.0f, 0.45f}, /* Deliberate: firmer strokes. */
 	{22.0f, 55.0f, 0.60f}, /* Gentle: smaller strokes; more false-trigger risk. */
 };
 #define SPEED_SMOOTHING_MS 15.0f
-#define STOP_SPEED_DPS 30.0f
+/* Speed must fall this far below the stroke maximum to confirm a peak. */
+#define PEAK_CONFIRM_FRACTION 0.85f
 #define MIN_STROKE_MS 100U
-#define MIN_BEAT_MS 250U
+#define MIN_BEAT_SEPARATION_MS 250U
 #define MAX_BEAT_MS 2000U
 #define MAX_GAP_MS 250U
 
@@ -32,6 +33,7 @@ static void clear_stroke(struct conducting_detector *d)
 {
 	d->armed = false;
 	d->peak = d->accel_peak = 0.0f;
+	d->peak_ms = 0;
 }
 
 void conducting_set_sensitivity(struct conducting_detector *d, uint8_t id)
@@ -42,6 +44,7 @@ void conducting_set_sensitivity(struct conducting_detector *d, uint8_t id)
 	d->sensitivity = id;
 	clear_stroke(d);
 	d->speed = 0.0f;
+	d->release_dps = 0.0f;
 	d->have_beat = false;
 	d->interval_count = 0;
 }
@@ -50,7 +53,7 @@ static uint16_t tempo(struct conducting_detector *d, uint32_t t)
 {
 	if (d->have_beat) {
 		uint32_t interval = t - d->last_beat_ms;
-		if (interval >= MIN_BEAT_MS && interval <= MAX_BEAT_MS) {
+		if (interval >= MIN_BEAT_SEPARATION_MS && interval <= MAX_BEAT_MS) {
 			if (d->interval_count == 5) {
 				memmove(d->intervals, d->intervals + 1, 4 * sizeof(uint16_t));
 				d->interval_count--;
@@ -168,33 +171,51 @@ bool conducting_process(struct conducting_detector *d,
 		return false;
 	}
 	if (!d->armed) {
-		/* A fresh rise is required: continued braking cannot re-arm a beat. */
+		/* After a peak, speed must fall well below it before a new stroke
+		 * can arm, so wobble on the falling side cannot retrigger.
+		 */
+		if (d->release_dps > 0.0f) {
+			if (d->speed > d->release_dps) {
+				return false;
+			}
+			d->release_dps = 0.0f;
+		}
 		if (d->speed < sensitivity_settings[d->sensitivity].min_stroke_dps || d->speed <= previous_speed ||
-		    (d->have_beat && s->timestamp_ms - d->last_beat_ms < MIN_BEAT_MS)) {
+		    (d->have_beat &&
+		     s->timestamp_ms - d->last_beat_ms < MIN_BEAT_SEPARATION_MS)) {
 			return false;
 		}
 		d->armed = true;
 		d->stroke_ms = s->timestamp_ms;
 	}
-	d->peak = fmaxf(d->peak, d->speed);
+	if (d->speed > d->peak) {
+		d->peak = d->speed;
+		d->peak_ms = s->timestamp_ms;
+	}
 	d->accel_peak = fmaxf(d->accel_peak, acceleration);
-	/* Detect braking toward a stop, without waiting for a rebound. This is
-	 * angular-speed evidence, not proof of zero translational velocity.
+	/* The beat is the angular-speed maximum, confirmed once speed has
+	 * clearly dropped from it rather than waiting for the stroke to stop.
 	 */
-	if (d->speed >= d->peak * sensitivity_settings[d->sensitivity].braking_fraction || d->speed > STOP_SPEED_DPS) {
+	if (d->speed >= d->peak * PEAK_CONFIRM_FRACTION) {
 		return false;
 	}
 	bool accepted = d->accel_peak >= sensitivity_settings[d->sensitivity].min_accel_mg &&
 		s->timestamp_ms - d->stroke_ms >= MIN_STROKE_MS &&
-		(!d->have_beat || s->timestamp_ms - d->last_beat_ms >= MIN_BEAT_MS);
+		/* Enforce separation on the classified peak times, not merely on
+		 * detection/notification time. Exactly 250 ms is allowed.
+		 */
+		(!d->have_beat ||
+		 d->peak_ms - d->last_beat_ms >= MIN_BEAT_SEPARATION_MS);
 	if (accepted) {
-		beat->timestamp_ms = s->timestamp_ms;
+		beat->timestamp_ms = d->peak_ms;
 		beat->detected_ms = s->timestamp_ms;
 		beat->bpm_tenths = tempo(d, beat->timestamp_ms);
 		beat->strength = (uint8_t)fminf(100.0f,
-			50.0f * (1.0f - d->speed/d->peak) +
+			50.0f * fminf(1.0f, d->peak / 300.0f) +
 			50.0f * fminf(1.0f, d->accel_peak / 500.0f));
 	}
+	d->release_dps = fmaxf(d->peak * sensitivity_settings[d->sensitivity].release_fraction,
+			       sensitivity_settings[d->sensitivity].min_stroke_dps);
 	clear_stroke(d);
 	return accepted;
 }

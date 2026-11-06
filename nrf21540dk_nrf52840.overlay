@@ -35,11 +35,11 @@
 		compatible = "st,lsm6dso";
 		reg = <0x6a>;
 		accel-range = <LSM6DSO_DT_FS_4G>;
-		accel-odr = <LSM6DSO_DT_ODR_52Hz>;
-		/* Accelerometer LPF2: 52 Hz / 10 = approximately 5.2 Hz. */
+		accel-odr = <LSM6DSO_DT_ODR_208Hz>;
+		/* Accelerometer LPF2: 208 Hz / 10 = approximately 20.8 Hz. */
 		accel-lp-filter = <LSM6DSO_DT_LP_ODR_DIV_10>;
 		gyro-range = <LSM6DSO_DT_FS_1000DPS>;
-		gyro-odr = <LSM6DSO_DT_ODR_52Hz>;
+		gyro-odr = <LSM6DSO_DT_ODR_208Hz>;
 		status = "okay";
 	};
 };

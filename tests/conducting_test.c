@@ -36,6 +36,9 @@ static void periodic(unsigned step, uint32_t start, bool accel, bool gyro)
 		if (conducting_process(&d, &s, &b)) {
 			assert(accel && gyro);
 			assert(b.detected_ms-b.timestamp_ms <= 250);
+			/* |sin| peaks 300 ms into each 600 ms half-cycle. */
+			unsigned phase_ms=(b.timestamp_ms-start-1150)%600;
+			assert(phase_ms>=260 && phase_ms<=360);
 			if (count) assert(b.timestamp_ms-last >= 250);
 			last=b.timestamp_ms;
 			count++;
@@ -111,7 +114,7 @@ int main(void)
 		assert(!profile.calibrated && profile.sensitivity==sensitivity);
 	}
 	gentle_strokes();
-	/* At the new 20 ms polling rate, an ideal abrupt stop from 120 deg/s
+	/* At the 208 Hz polling rate, an ideal abrupt stop from 120 deg/s
 	 * should trigger within two stop samples (not a hardware latency claim).
 	 */
 	struct conducting_detector fast;
@@ -129,12 +132,13 @@ int main(void)
 	assert(fast_beats==1);
 	periodic(50, 0, true, true);
 	periodic(20, 0, true, true);
+	periodic(5, 0, true, true);
 	periodic(37, 0, true, true);
 	periodic(50, UINT32_MAX-3000, true, true);
 	periodic(50, 0, false, true);
 	periodic(50, 0, true, false);
 	struct conducting_detector d;
-	/* Two move-then-hold strokes: exactly one prompt event each, no rebound. */
+	/* Two move-then-hold strokes: exactly one peak event each, no rebound. */
 	calibrate(&d, 0);
 	for (unsigned stroke=0; stroke<2; stroke++) {
 		unsigned beats=0;
@@ -145,7 +149,9 @@ int main(void)
 			struct conducting_beat b;
 			if (conducting_process(&d, &s, &b)) {
 				assert(offset>=300 && offset<=400);
-				assert(b.timestamp_ms==t && b.detected_ms==t);
+				/* Event time is the speed peak, before the drop that confirms it. */
+				assert(b.detected_ms==t && b.timestamp_ms<t);
+				assert(b.timestamp_ms>=1150+stroke*1000);
 				beats++;
 			}
 		}
