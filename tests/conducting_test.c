@@ -36,6 +36,9 @@ static void periodic(unsigned step, uint32_t start, bool accel, bool gyro)
 		if (conducting_process(&d, &s, &b)) {
 			assert(accel && gyro);
 			assert(b.detected_ms-b.timestamp_ms <= 250);
+			/* |sin| peaks 300 ms into each 600 ms half-cycle. */
+			unsigned phase_ms=(b.timestamp_ms-start-1150)%600;
+			assert(phase_ms>=260 && phase_ms<=360);
 			if (count) assert(b.timestamp_ms-last >= 250);
 			last=b.timestamp_ms;
 			count++;
@@ -87,6 +90,83 @@ static void gentle_strokes(void)
 	}
 }
 
+/* A straight stroke accelerates then brakes along the same axis, with almost
+ * no rotation. Test body X/Y/Z, reverse direction, diagonal grip, and uptime wrap.
+ */
+static void straight_strokes(unsigned step, uint32_t start, unsigned axis,
+			     int amplitude, unsigned sensitivity, bool mixed,
+			     unsigned expected)
+{
+	struct conducting_detector d;
+	calibrate(&d, start);
+	conducting_set_sensitivity(&d, sensitivity);
+	unsigned count = 0;
+	uint32_t last = 0;
+	for (unsigned t = 1150; t < 4150; t += step) {
+		unsigned phase = (t - 1150) % 1000;
+		int acceleration = phase < 120 ? amplitude : (phase < 240 ? -amplitude : 0);
+		struct motion_sample s = sample(start+t, mixed && phase<240 ? 122 : 2, 0);
+		if (axis == 0) { s.accel_x_mg = acceleration; }
+		if (axis == 1) { s.accel_y_mg = acceleration; }
+		if (axis == 2) { s.accel_z_mg += acceleration; }
+		if (axis == 3) {
+			s.accel_x_mg = acceleration * 0.6f;
+			s.accel_z_mg += acceleration * 0.8f;
+		}
+		struct conducting_beat b;
+		if (conducting_process(&d, &s, &b)) {
+			assert(b.detected_ms == s.timestamp_ms);
+			assert(b.detected_ms - b.timestamp_ms <= 250);
+			if (count) { assert(b.timestamp_ms-last >= 250); }
+			if (!mixed) { assert(b.strength > 50); }
+			last = b.timestamp_ms;
+			count++;
+		}
+	}
+	assert(count == expected);
+}
+
+static void straight_rejections(void)
+{
+	for (unsigned kind = 0; kind < 3; kind++) {
+		struct conducting_detector d;
+		calibrate(&d, 0);
+		for (unsigned t = 1150; t < 4150; t += 5) {
+			unsigned phase = (t-1150)%1000;
+			/* single impact, one-sided acceleration, and small vibration */
+			int a = kind == 0 ? (phase < 10 ? 900 : 0) :
+				kind == 1 ? (phase < 200 ? 400 : 0) : (phase%20 < 10 ? 35 : -35);
+			struct motion_sample s = sample(t, 2, a);
+			struct conducting_beat b = {.strength=77};
+			assert(!conducting_process(&d, &s, &b));
+			assert(b.strength == 77);
+		}
+	}
+}
+
+static void straight_cancellation(void)
+{
+	/* Do not finish an old drive after a preset change, gap, or sideways turn. */
+	for (unsigned reason=0; reason<3; reason++) {
+		struct conducting_detector d;
+		calibrate(&d, 0);
+		struct conducting_beat b = {.strength=77};
+		for (unsigned t=1150; t<1270; t+=5) {
+			struct motion_sample s=sample(t, 2, 300);
+			assert(!conducting_process(&d, &s, &b));
+		}
+		assert(d.straight.phase == 1);
+		if (reason == 0) { conducting_set_sensitivity(&d, 2); }
+		unsigned delay = reason == 1 ? 500 : 0;
+		for (unsigned t=1270; t<2000; t+=5) {
+			struct motion_sample s=sample(t+delay, 2, t<1390 ? -300 : 0);
+			if (reason == 2) { s.accel_y_mg=s.accel_x_mg; s.accel_x_mg=0; }
+			assert(!conducting_process(&d, &s, &b));
+		}
+		assert(b.strength == 77);
+	}
+}
+
 int main(void)
 {
 	/* Sensitivity profiles distinguish weak strokes without losing calibration. */
@@ -111,7 +191,7 @@ int main(void)
 		assert(!profile.calibrated && profile.sensitivity==sensitivity);
 	}
 	gentle_strokes();
-	/* At the new 20 ms polling rate, an ideal abrupt stop from 120 deg/s
+	/* At the 208 Hz polling rate, an ideal abrupt stop from 120 deg/s
 	 * should trigger within two stop samples (not a hardware latency claim).
 	 */
 	struct conducting_detector fast;
@@ -129,12 +209,25 @@ int main(void)
 	assert(fast_beats==1);
 	periodic(50, 0, true, true);
 	periodic(20, 0, true, true);
+	periodic(5, 0, true, true);
 	periodic(37, 0, true, true);
 	periodic(50, UINT32_MAX-3000, true, true);
 	periodic(50, 0, false, true);
-	periodic(50, 0, true, false);
+	/* Acceleration-only strokes are now intentionally accepted when biphasic. */
+	for (unsigned axis=0; axis<4; axis++) {
+		straight_strokes(2, 0, axis, 300, 0, false, 3);
+		straight_strokes(3, 0, axis, -300, 0, false, 3);
+		straight_strokes(20, 0, axis, 300, 0, false, 3);
+		straight_strokes(50, UINT32_MAX-2000, axis, -300, 0, false, 3);
+	}
+	for (unsigned sensitivity=0; sensitivity<3; sensitivity++) {
+		straight_strokes(5, 0, 2, 100, sensitivity, false, sensitivity==2 ? 3 : 0);
+		straight_strokes(5, 0, 0, 400, sensitivity, true, 3);
+	}
+	straight_rejections();
+	straight_cancellation();
 	struct conducting_detector d;
-	/* Two move-then-hold strokes: exactly one prompt event each, no rebound. */
+	/* Two move-then-hold strokes: exactly one peak event each, no rebound. */
 	calibrate(&d, 0);
 	for (unsigned stroke=0; stroke<2; stroke++) {
 		unsigned beats=0;
@@ -145,7 +238,9 @@ int main(void)
 			struct conducting_beat b;
 			if (conducting_process(&d, &s, &b)) {
 				assert(offset>=300 && offset<=400);
-				assert(b.timestamp_ms==t && b.detected_ms==t);
+				/* Event time is the speed peak, before the drop that confirms it. */
+				assert(b.detected_ms==t && b.timestamp_ms<t);
+				assert(b.timestamp_ms>=1150+stroke*1000);
 				beats++;
 			}
 		}

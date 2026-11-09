@@ -5,16 +5,17 @@
 
 /* Physical units: mg, degrees/second, milliseconds. Tune on labeled recordings. */
 static const struct {
-	float min_stroke_dps, min_accel_mg, braking_fraction;
+	float min_stroke_dps, min_accel_mg, release_fraction, straight_mg;
 } sensitivity_settings[] = {
-	{30.0f, 80.0f, 0.55f}, /* Balanced: existing default. */
-	{40.0f, 120.0f, 0.45f}, /* Deliberate: firmer strokes. */
-	{22.0f, 55.0f, 0.60f}, /* Gentle: smaller strokes; more false-trigger risk. */
+	{30.0f, 80.0f, 0.55f, 120.0f}, /* Balanced: existing default. */
+	{40.0f, 120.0f, 0.45f, 180.0f}, /* Deliberate: firmer strokes. */
+	{22.0f, 55.0f, 0.60f, 80.0f}, /* Gentle: smaller strokes; more false-trigger risk. */
 };
 #define SPEED_SMOOTHING_MS 15.0f
-#define STOP_SPEED_DPS 30.0f
+/* Speed must fall this far below the stroke maximum to confirm a peak. */
+#define PEAK_CONFIRM_FRACTION 0.85f
 #define MIN_STROKE_MS 100U
-#define MIN_BEAT_MS 250U
+#define MIN_BEAT_SEPARATION_MS 250U
 #define MAX_BEAT_MS 2000U
 #define MAX_GAP_MS 250U
 
@@ -32,6 +33,7 @@ static void clear_stroke(struct conducting_detector *d)
 {
 	d->armed = false;
 	d->peak = d->accel_peak = 0.0f;
+	d->peak_ms = 0;
 }
 
 void conducting_set_sensitivity(struct conducting_detector *d, uint8_t id)
@@ -41,7 +43,9 @@ void conducting_set_sensitivity(struct conducting_detector *d, uint8_t id)
 	}
 	d->sensitivity = id;
 	clear_stroke(d);
+	memset(&d->straight, 0, sizeof(d->straight));
 	d->speed = 0.0f;
+	d->release_dps = 0.0f;
 	d->have_beat = false;
 	d->interval_count = 0;
 }
@@ -50,7 +54,7 @@ static uint16_t tempo(struct conducting_detector *d, uint32_t t)
 {
 	if (d->have_beat) {
 		uint32_t interval = t - d->last_beat_ms;
-		if (interval >= MIN_BEAT_MS && interval <= MAX_BEAT_MS) {
+		if (interval >= MIN_BEAT_SEPARATION_MS && interval <= MAX_BEAT_MS) {
 			if (d->interval_count == 5) {
 				memmove(d->intervals, d->intervals + 1, 4 * sizeof(uint16_t));
 				d->interval_count--;
@@ -80,6 +84,94 @@ static uint16_t tempo(struct conducting_detector *d, uint32_t t)
 		return 0;
 	}
 	return (uint16_t)(600000U / median);
+}
+
+/* Require both event-time and delivery-time separation across detector paths.
+ * Reject an older candidate rather than interpreting unsigned underflow as a gap.
+ */
+static bool separated(const struct conducting_detector *d, uint32_t peak, uint32_t now)
+{
+	uint32_t gap = peak - d->last_beat_ms;
+	return !d->have_beat || (gap >= MIN_BEAT_SEPARATION_MS && gap <= INT32_MAX &&
+				now - d->last_emitted_ms >= MIN_BEAT_SEPARATION_MS);
+}
+
+static void straight_release(struct straight_stroke *s)
+{
+	s->phase = 3;
+	s->quiet_ms = 0;
+}
+
+/* Only a low-rotation, directionally coherent drive followed by opposite
+ * braking qualifies. A one-sided bump, static tilt, or vibration is insufficient.
+ * No velocity integration or fixed sensor/world axis is assumed.
+ */
+static bool straight_process(struct conducting_detector *d, const float linear[3],
+			     float rotation, uint32_t dt, uint32_t now,
+			     struct conducting_beat *beat)
+{
+	struct straight_stroke *s = &d->straight;
+	float floor = sensitivity_settings[d->sensitivity].straight_mg;
+	for (unsigned i = 0; i < 3; i++) {
+		s->filtered[i] += (float)dt / (15.0f + dt) * (linear[i] - s->filtered[i]);
+	}
+	float magnitude = norm(s->filtered);
+	if (rotation >= sensitivity_settings[d->sensitivity].min_stroke_dps) {
+		straight_release(s);
+		return false;
+	}
+	if (s->phase == 3) {
+		s->quiet_ms = magnitude < floor * 0.35f ? s->quiet_ms + dt : 0;
+		if (s->quiet_ms >= 120) { s->phase = 0; }
+		return false;
+	}
+	if (s->phase == 0) {
+		if (magnitude < floor) { return false; }
+		s->phase = 1;
+		s->start_ms = now;
+		s->drive_ms = 0;
+		s->drive_impulse = s->brake_impulse = s->brake_peak = 0;
+		for (unsigned i = 0; i < 3; i++) { s->direction[i] = s->filtered[i] / magnitude; }
+	}
+	if (now - s->start_ms > 800) { straight_release(s); return false; }
+	float projection = 0;
+	for (unsigned i = 0; i < 3; i++) { projection += s->filtered[i] * s->direction[i]; }
+	/* Reject significant sideways motion relative to this stroke's own axis. */
+	if (magnitude >= floor && fabsf(projection) < 0.8f * magnitude) {
+		straight_release(s);
+		return false;
+	}
+	if (s->phase == 1) {
+		if (projection >= floor * 0.5f) {
+			s->drive_ms += dt;
+			s->drive_impulse += projection * dt * 0.001f;
+		}
+		if (projection > -floor * 0.6f) { return false; }
+		if (s->drive_ms < 40 || s->drive_impulse < 8.0f) {
+			straight_release(s);
+			return false;
+		}
+		s->phase = 2;
+		s->brake_ms = now;
+	}
+	float braking = fmaxf(0, -projection);
+	s->brake_impulse += braking * dt * 0.001f;
+	if (braking > s->brake_peak) { s->brake_peak = braking; s->peak_ms = now; }
+	if (braking >= s->brake_peak * 0.6f) { return false; }
+	bool accepted = now - s->brake_ms >= 40 && now - s->start_ms >= 100 &&
+		s->brake_peak >= floor && s->brake_impulse >= 8.0f &&
+		s->brake_impulse >= 0.4f * s->drive_impulse && separated(d, s->peak_ms, now);
+	if (accepted) {
+		beat->timestamp_ms = s->peak_ms;
+		beat->detected_ms = now;
+		beat->strength = (uint8_t)(50.0f * fminf(1, s->brake_peak / (2 * floor)) +
+			50.0f * fminf(1, s->brake_impulse / s->drive_impulse));
+		beat->bpm_tenths = tempo(d, s->peak_ms);
+		d->last_emitted_ms = now;
+		clear_stroke(d);
+	}
+	straight_release(s);
+	return accepted;
 }
 
 bool conducting_process(struct conducting_detector *d,
@@ -163,38 +255,60 @@ bool conducting_process(struct conducting_detector *d,
 		d->have_beat = false;
 		d->interval_count = 0;
 	}
+	if (straight_process(d, linear, wn, dt_ms, s->timestamp_ms, beat)) {
+		return true;
+	}
 	if (d->armed && s->timestamp_ms - d->stroke_ms > 1500) {
 		clear_stroke(d);
 		return false;
 	}
 	if (!d->armed) {
-		/* A fresh rise is required: continued braking cannot re-arm a beat. */
+		/* After a peak, speed must fall well below it before a new stroke
+		 * can arm, so wobble on the falling side cannot retrigger.
+		 */
+		if (d->release_dps > 0.0f) {
+			if (d->speed > d->release_dps) {
+				return false;
+			}
+			d->release_dps = 0.0f;
+		}
 		if (d->speed < sensitivity_settings[d->sensitivity].min_stroke_dps || d->speed <= previous_speed ||
-		    (d->have_beat && s->timestamp_ms - d->last_beat_ms < MIN_BEAT_MS)) {
+		    (d->have_beat &&
+		     s->timestamp_ms - d->last_beat_ms < MIN_BEAT_SEPARATION_MS)) {
 			return false;
 		}
 		d->armed = true;
 		d->stroke_ms = s->timestamp_ms;
 	}
-	d->peak = fmaxf(d->peak, d->speed);
+	if (d->speed > d->peak) {
+		d->peak = d->speed;
+		d->peak_ms = s->timestamp_ms;
+	}
 	d->accel_peak = fmaxf(d->accel_peak, acceleration);
-	/* Detect braking toward a stop, without waiting for a rebound. This is
-	 * angular-speed evidence, not proof of zero translational velocity.
+	/* The beat is the angular-speed maximum, confirmed once speed has
+	 * clearly dropped from it rather than waiting for the stroke to stop.
 	 */
-	if (d->speed >= d->peak * sensitivity_settings[d->sensitivity].braking_fraction || d->speed > STOP_SPEED_DPS) {
+	if (d->speed >= d->peak * PEAK_CONFIRM_FRACTION) {
 		return false;
 	}
 	bool accepted = d->accel_peak >= sensitivity_settings[d->sensitivity].min_accel_mg &&
 		s->timestamp_ms - d->stroke_ms >= MIN_STROKE_MS &&
-		(!d->have_beat || s->timestamp_ms - d->last_beat_ms >= MIN_BEAT_MS);
+		/* Enforce separation on the classified peak times, not merely on
+		 * detection/notification time. Exactly 250 ms is allowed.
+		 */
+		separated(d, d->peak_ms, s->timestamp_ms);
 	if (accepted) {
-		beat->timestamp_ms = s->timestamp_ms;
+		straight_release(&d->straight);
+		d->last_emitted_ms = s->timestamp_ms;
+		beat->timestamp_ms = d->peak_ms;
 		beat->detected_ms = s->timestamp_ms;
 		beat->bpm_tenths = tempo(d, beat->timestamp_ms);
 		beat->strength = (uint8_t)fminf(100.0f,
-			50.0f * (1.0f - d->speed/d->peak) +
+			50.0f * fminf(1.0f, d->peak / 300.0f) +
 			50.0f * fminf(1.0f, d->accel_peak / 500.0f));
 	}
+	d->release_dps = fmaxf(d->peak * sensitivity_settings[d->sensitivity].release_fraction,
+			       sensitivity_settings[d->sensitivity].min_stroke_dps);
 	clear_stroke(d);
 	return accepted;
 }

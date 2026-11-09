@@ -1,0 +1,13 @@
+{
+  "device_name": "Smart Baton",
+  "device_address": null,
+  "serial_port": "COM3",
+  "serial_baud": 115200,
+  "bpm": 100,
+  "sensitivity": "balanced",
+  "strength_threshold": 50,
+  "beat": {
+    "frequency_hz": 800,
+    "duration_ms": 15
+  }
+}

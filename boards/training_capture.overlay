@@ -1,0 +1,10 @@
+/* Add after the hardware overlay for lossless 416 Hz dataset capture. */
+/ {
+	training_capture: training-capture {
+		status = "okay";
+	};
+};
+
+&uart0 {
+	current-speed = <1000000>;
+};
