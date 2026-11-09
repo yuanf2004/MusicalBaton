@@ -98,6 +98,13 @@ static bool notifications_enabled;
 static bool bluetooth_initialized;
 static atomic_t bluetooth_active;
 static atomic_t advertising;
+static atomic_t phone_connected;
+
+bool bluetooth_is_connected(void)
+{
+	return atomic_get(&phone_connected) != 0;
+}
+
 static struct bt_conn *current_connection;
 static int64_t advertising_deadline_ms;
 static K_MUTEX_DEFINE(connection_mutex);
@@ -320,6 +327,21 @@ static void schedule_advertising_restart(void)
 	}
 }
 
+static void log_link_parameters(uint16_t interval, uint16_t latency, uint16_t timeout)
+{
+	/* Interval unit 1.25 ms, supervision unit 10 ms. Actual negotiated values. */
+	printk("BLE link: interval=%u.%02u ms latency=%u timeout=%u ms\n",
+	       interval * 125U / 100U, interval * 125U % 100U,
+	       latency, timeout * 10U);
+}
+
+static void le_param_updated(struct bt_conn *conn, uint16_t interval,
+			     uint16_t latency, uint16_t timeout)
+{
+	ARG_UNUSED(conn);
+	log_link_parameters(interval, latency, timeout);
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
 	if (err != 0U) {
@@ -341,9 +363,14 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	}
 
 	current_connection = bt_conn_ref(conn);
+	atomic_set(&phone_connected, 1);
 	led_set_bluetooth_state(LED_BLUETOOTH_CONNECTED);
 	k_mutex_unlock(&connection_mutex);
-	printk("Phone connected\n");
+	printk("Phone connected; requesting 15 ms / latency 0 after GAP delay\n");
+	struct bt_conn_info info;
+	if (bt_conn_get_info(conn, &info) == 0) {
+		log_link_parameters(info.le.interval, info.le.latency, info.le.timeout);
+	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -352,6 +379,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 	printk("Phone disconnected: 0x%02x\n", reason);
 	notifications_enabled = false;
+	atomic_clear(&phone_connected);
 
 	k_mutex_lock(&connection_mutex, K_FOREVER);
 	if (current_connection != NULL) {
@@ -370,6 +398,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 BT_CONN_CB_DEFINE(connection_callbacks) = {
 	.connected = connected,
 	.disconnected = disconnected,
+	.le_param_updated = le_param_updated,
 };
 
 int bluetooth_init(void)

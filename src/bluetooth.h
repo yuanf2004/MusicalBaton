@@ -28,6 +28,8 @@ int bluetooth_init(void);
 int bluetooth_activate(void);
 int bluetooth_deactivate(void);
 bool bluetooth_is_active(void);
+/* Used to suppress high-volume UART diagnostics during phone playback. */
+bool bluetooth_is_connected(void);
 /* Requested sensitivity, set via versioned ...def3 read/write characteristic. */
 uint8_t bluetooth_conducting_sensitivity(void);
 

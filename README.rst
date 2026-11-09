@@ -50,7 +50,8 @@ acceleration fallback. Advanced
 direction models remain a separate experiment and do not alter this module or
 its public interface.
 Its interface in ``src/conducting.h`` is ordinary C, independent of Zephyr and
-pin mappings. The main loop feeds successful sensor samples after BLE publication.
+pin mappings. The main loop processes successful sensor samples and submits beat notifications
+before routine motion publication.
 Beat events print to the console and notify subscribed phones using a separate
 12-byte BLE characteristic; the existing 20-byte motion packet is unchanged.
 
@@ -196,7 +197,8 @@ playback requires ``strength > strength_threshold``.
 Recording conducting diagnostics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The firmware emits a compact ``CD`` diagnostic line at approximately 40 Hz for
+The firmware emits a compact ``CD`` diagnostic line at approximately 40 Hz
+when no phone is connected, for
 real-motion tuning while continuing to acquire the IMU at 416 Hz. Record a run
 and play cues at the same time with::
 
@@ -824,6 +826,32 @@ Development rules
 Recent changes
 --------------
 
+Low-latency phone playback: preferred BLE connection interval is now 15 ms
+(min=max=12 in 1.25 ms units), peripheral latency 0, supervision timeout 4 s.
+Zephyr's automatic parameter update requests these after the standard 5 s GAP
+post-connect delay. The phone may choose a longer interval; UART prints actual
+interval/latency/timeout at connection and each update. No rejected requests are
+retried in an application loop. Shorter intervals may increase battery use.
+
+Beat processing/notification submission now precedes the same cycle's motion
+publication and UART logging. The 50 ms gate applies only to motion, never beats.
+The 40 Hz CD UART diagnostic stream pauses while any phone is connected and
+resumes on disconnection, preserving USB-only PC classifier operation. Running
+the PC serial ML client while a phone is connected no longer supplies its CD
+input; disconnect the phone for that workflow. Beat console lines still include
+peak and confirmation timestamps, so ``detected - t`` measures detector delay.
+The binary training overlay is unchanged and is not the latency-testing build.
+
+Packet formats, motion streaming rate, detector thresholds and LED/button behavior
+are unchanged. iOS must be updated separately for the persistent audio engine;
+flashing this firmware does not install the mobile app. Check the phone speaker
+first, wait at least five seconds after connecting, and record actual connection
+parameters plus app audio timing. Compare recorded physical gesture and audible
+click before claiming end-to-end improvement. Device/phone clocks are not synced;
+subtracting their timestamps cannot measure Bluetooth latency. There is no
+zero-latency guarantee; braking/peak confirmation still contributes delay.
+
+
 Straight-stroke fallback: added gravity-subtracted acceleration/braking detection
 for low-rotation translation, including vertical gestures. Existing rotational
 thresholds are preserved; shared deduplication also guards emission times. Tests
@@ -1024,3 +1052,9 @@ inactive. Triple-press to restart`` and the LED should go off. Triple-press agai
 and connect with a BLE client: three flashes should precede solid light, and the
 connection should remain active past 60 seconds. Disconnect to see three flashes
 and a fresh breathing/advertising window that expires after another 60 seconds.
+
+Low-latency update validation: the NCS v3.4.0 nRF52840 DK build passed
+(155,608 bytes flash, 26,360 bytes RAM). Generated configuration confirms
+15 ms preferred interval, zero peripheral latency, 4 s supervision and the
+5 s parameter-update delay. Conducting C tests and all 15 Python host tests
+passed. No hardware was flashed and actual negotiated latency is unmeasured.

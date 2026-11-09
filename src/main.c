@@ -153,6 +153,19 @@ int main(void)
 			continue;
 		}
 
+		/* Submit beats before motion telemetry or UART work from this cycle. */
+		bool was_calibrated = detector.calibrated;
+		conducting_set_sensitivity(&detector, bluetooth_conducting_sensitivity());
+		struct conducting_beat beat;
+		bool have_beat = conducting_process(&detector, &sample, &beat);
+		if (have_beat) {
+			ret = bluetooth_publish_beat(beat.timestamp_ms, beat.bpm_tenths,
+						     beat.strength);
+			if (ret < 0) {
+				printk("Bluetooth beat notification failed: %d\n", ret);
+			}
+		}
+
 		/* Gate on cycle start so fetch jitter cannot skip alternate samples.
 		 * Never retry a failed notification or catch up missed deadlines.
 		 */
@@ -178,16 +191,7 @@ int main(void)
 			}
 		}
 
-		/* UART output follows publication so it cannot delay this notification. */
-		bool was_calibrated = detector.calibrated;
-		conducting_set_sensitivity(&detector, bluetooth_conducting_sensitivity());
-		struct conducting_beat beat;
-		if (conducting_process(&detector, &sample, &beat)) {
-			ret = bluetooth_publish_beat(beat.timestamp_ms, beat.bpm_tenths,
-						     beat.strength);
-			if (ret < 0) {
-				printk("Bluetooth beat notification failed: %d\n", ret);
-			}
+		if (have_beat) {
 			printk("BEAT: t=%u detected=%u strength=%u BPM=%u.%u\n",
 			       beat.timestamp_ms, beat.detected_ms, beat.strength,
 			       beat.bpm_tenths / 10, beat.bpm_tenths % 10);
@@ -201,7 +205,7 @@ int main(void)
 		stream_training_sample(&sample);
 #endif
 #if PRINT_CONDUCTING_DIAGNOSTICS && !TRAINING_CAPTURE_ENABLED
-		if (cycle_start_ms >= next_diagnostic_ms) {
+		if (!bluetooth_is_connected() && cycle_start_ms >= next_diagnostic_ms) {
 			next_diagnostic_ms = cycle_start_ms +
 				CONDUCTING_DIAGNOSTIC_INTERVAL_MS;
 			/* CD: time, gyro xyz (0.1 dps), accel xyz (mg),
