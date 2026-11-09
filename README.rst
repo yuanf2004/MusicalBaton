@@ -45,7 +45,8 @@ Current behavior
 Experimental conducting detector
 --------------------------------
 
-``src/conducting.c`` uses the committed simple peak-speed detector. Advanced
+``src/conducting.c`` uses a peak-speed detector plus a low-rotation straight-stroke
+acceleration fallback. Advanced
 direction models remain a separate experiment and do not alter this module or
 its public interface.
 Its interface in ``src/conducting.h`` is ordinary C, independent of Zephyr and
@@ -84,7 +85,23 @@ Processing uses all six axes:
 * After a beat, require speed to fall below the selected release level (55% of
   the peak for Balanced, or the arm threshold when larger) before another stroke
   can arm. Holding still therefore cannot repeatedly trigger beats.
-* ``timestamp_ms`` is the retained peak-speed sample; ``detected_ms`` is the
+* For straight strokes below the selected angular arm speed, smooth the
+  gravity-subtracted acceleration vector over 15 ms. Require a coherent drive
+  followed by opposite braking along the drive direction (no fixed sensor axis).
+  Balanced/Deliberate/Gentle use acceleration floors of 120/180/80 mg. Drive
+  evidence must last at least 40 ms and accumulate 8 mg-seconds. Braking must
+  peak above the floor, last at least 40 ms, accumulate at least 8 mg-seconds
+  and 40% of the drive impulse, then fall below 60% of its peak. The whole stroke
+  must last at least 100 ms and finish within 800 ms. Sideways acceleration
+  exceeding the 0.8 direction-cosine criterion cancels the candidate.
+* After a straight candidate or rotational beat, require 120 ms of quiet
+  acceleration below 35% of the straight-stroke floor before rearming that path.
+  Rotation above the angular arm threshold cancels the straight candidate so
+  the existing rotational detector takes priority. Both paths share a 250 ms
+  minimum separation on event timestamps AND emission times. Older candidates
+  are rejected; no additional BLE packets or source flag were introduced.
+* ``timestamp_ms`` is the retained angular-speed peak or straight-stroke braking
+  peak; ``detected_ms`` is the
   later sample that confirmed the drop. Tempo is estimated only after accepted
   events and expires after two seconds without a beat.
 
@@ -92,16 +109,22 @@ Illustrative output::
 
    BEAT: t=2400 detected=2460 strength=71 BPM=100.0
 
-``strength`` is a heuristic 0-100 score from peak speed (full at 300 deg/s) and
-peak acceleration (full at 500 mg), not a probability. Thresholds need tuning
-on labeled recordings. Shaking can trigger candidates; translation-only strokes,
-small gestures, and smooth circular motion without a clear angular-speed peak
-may be missed. A beat lands at the fastest point of the stroke, not at the stop
-(ictus) where earlier firmware triggered. Low angular speed does not prove zero translational velocity. Norm-based features require no configured baton axis but
-does not assign special meaning to downward motion, diagonal-up motion, a
-downbeat, a beat number, or a time signature. Gravity may
-drift under sustained acceleration; differing hardware filter delays can produce
-acceleration residuals even during pure rotation.
+``strength`` is a heuristic 0-100 score, not a probability. Rotational beats
+retain their existing peak-speed/acceleration score. Straight strokes use 50
+points for braking peak relative to twice the preset acceleration floor and 50
+points for braking impulse relative to drive impulse, each capped at 50. This
+avoids assigning all near-zero-rotation strokes a weak gyro-based score. The
+phone's strength cutoff and optional idle ML gate still apply: a newly detected
+straight beat can still be suppressed on the phone. ML was not retrained here.
+
+Thresholds need tuning on labeled hardware recordings. This fallback detects
+biphasic translation evidence, not proof of a downward gesture or zero velocity.
+One-sided bumps and tiny vibration are rejected by synthetic tests; ordinary
+handling can still resemble a stroke. Gravity drift, rapid repeated translations
+without 120 ms quiet, very small gestures, and curved low-rotation motion remain
+limitations. Direction is stroke-relative, so any grip/axis can qualify. Straight
+beats are timestamped near braking rather than the rotational speed maximum;
+compare perceived audio timing on hardware before tuning confirmation thresholds.
 
 Polling now targets 2,404 us; BLE retains its 50 ms publication gate (roughly 50-53 ms
 between sends). The IMU ODR is 416 Hz on both sensor channels.
@@ -356,7 +379,7 @@ Run deterministic C tests without Zephyr::
    /tmp/baton-conducting-test
 
 Tests cover synthetic strokes at multiple sample intervals, peak-aligned beat
-timestamps, rejection of gyro-only and acceleration-only motion, stop-without-rebound triggers, no repeated triggers
+timestamps, rejection of gyro-only motion, straight acceleration/braking strokes, stop-without-rebound triggers, no repeated triggers
 while held still, rearming on a new stroke, calibration, gaps, duplicate/backward times,
 uptime wrap, and gravity tracking during tilt. They do not establish real conducting
 accuracy. Flash the matching build, hold still to calibrate, and compare candidate
@@ -490,20 +513,19 @@ supports read and write-with-response. Its four-byte packet is
 Read returns the current requested setting in the same format. Wrong length,
 nonzero offset, prepared writes, and unsupported bytes/presets are rejected.
 
-================= ============ ============
-Preset / ID       Arm speed    Rearm below
-================= ============ ============
-Balanced / 0      25 deg/s     60% of peak
-Deliberate / 1    40 deg/s     55% of peak
-Gentle / 2        22 deg/s     65% of peak
-================= ============ ============
+================= ============ ============ ==================
+Preset / ID       Arm speed    Rearm below  Straight accel floor
+================= ============ ============ ==================
+Balanced / 0      30 deg/s     55% of peak  120 mg
+Deliberate / 1    40 deg/s     45% of peak  180 mg
+Gentle / 2        22 deg/s     60% of peak  80 mg
+================= ============ ============ ==================
 
-Balanced is the default. All confirm a speed maximum after two falling samples
-and the preset prominence decline, require a fixed 35 ms minimum stroke, enforce
-a fixed 300 ms output separation, and require the same clear speed valley before
-rearming. Smooth-loop phase is the net 3D
-orientation change, so reversing a partial turn cannot accumulate into duplicate
-180-degree beats.
+Rotational beats confirm below 85% of the speed peak, require at least 100 ms
+of stroke and acceleration corroboration (80/120/55 mg). Both paths enforce
+250 ms event and emission separation. The straight-stroke rules are described
+above. Quaternion loop detection is not present in this implementation; older
+experiment notes below do not describe the current detector.
 Gentle may increase false positives. BLE callbacks only store an atomic preset
 request; the main sampling thread applies changes before detection and clears
 stroke/tempo history while preserving calibration. A sensor gap recalibrates but
@@ -801,6 +823,21 @@ Development rules
 
 Recent changes
 --------------
+
+Straight-stroke fallback: added gravity-subtracted acceleration/braking detection
+for low-rotation translation, including vertical gestures. Existing rotational
+thresholds are preserved; shared deduplication also guards emission times. Tests
+cover positive/negative X/Y/Z and diagonal strokes at 2/3/20/50 ms intervals,
+uptime wrap, sensitivity, mixed rotation/translation, impacts, vibration and
+one-sided acceleration, sideways rejection, and mid-stroke sensitivity/gap
+cancellation. The NCS v3.4.0 DK build passed (155,148 bytes flash / 26,360 bytes
+RAM); host C tests passed with AddressSanitizer and UndefinedBehaviorSanitizer.
+Hardware accuracy, false positives and end-to-end mobile filtering need validation.
+No pins, sensor settings, BLE formats or mobile code changed. Flash the new DK
+build explicitly to try it; a build alone does not update the device.
+
+Earlier experiment notes (some describe superseded, uncommitted algorithms):
+
 
 416 Hz training-capture foundation: both overlays now configure accelerometer
 and gyroscope at 416 Hz, the polling target is 2,404 us, accelerometer LPF2 is
