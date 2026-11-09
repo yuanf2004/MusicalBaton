@@ -29,7 +29,8 @@ Current behavior
 * Triple-pressing the user button toggles Bluetooth availability.
 * Double-pressing the user button restarts beat-detector calibration. Hold still
   afterward until ``Beat detector calibrated`` appears; the BLE connection stays up.
-* When enabled, advertises as ``Smart Baton`` and accepts one connection.
+* When enabled, advertises with its saved device name (``Smart Baton`` by
+  default) and accepts one connection.
 * If no phone connects within 60 seconds, stops advertising, turns the breathing
   LED off, and marks Bluetooth inactive. Triple-press starts a new window.
   A phone connection cancels the timeout; a disconnect opens a fresh 60-second
@@ -1058,3 +1059,73 @@ Low-latency update validation: the NCS v3.4.0 nRF52840 DK build passed
 15 ms preferred interval, zero peripheral latency, 4 s supervision and the
 5 s parameter-update delay. Conducting C tests and all 15 Python host tests
 passed. No hardware was flashed and actual negotiated latency is unmeasured.
+
+
+Persistent Bluetooth names and baton discovery
+---------------------------------------------
+
+All compatible batons advertise the same product service UUID,
+``12345678-1234-5678-1234-56789abcdef0``. The UUID now appears in the primary
+advertising packet (21 bytes including flags and AD headers). The complete device
+name is in the scan response (up to 22 bytes including its AD header). This fits
+legacy 31-byte advertising/scan-response limits independently. The production
+iOS app filters by this service UUID rather than a display name; individual
+peripheral identifiers distinguish batons with the same name. The generic debug
+scanner remains able to discover arbitrary BLE devices. The UUID is a discovery
+label, not proof of authenticity.
+
+The new appended characteristic ``12345678-1234-5678-1234-56789abcdef4`` supports
+Read and Write with response. Existing motion/beat/settings UUIDs, packet formats
+and attribute indexes are preserved. Write 1–20 bytes of a valid UTF-8 name, with
+no terminator, control characters or surrounding whitespace. Empty, malformed,
+long/offset/prepared writes are rejected. A pending request rejects another write.
+The production app trims surrounding whitespace and validates byte length before
+sending. Names remain unique only by convention; the service/peripheral IDs do
+not depend on the name.
+
+Read format: version byte ``1``, status byte (``0`` saved, ``1`` saving, ``2`` save
+failed), followed by the last committed UTF-8 name. A maximum-length read is 22
+bytes, which may use GATT Read Blob at the default MTU. The client must wait for
+status 0 and the requested name; a write acknowledgement alone only accepts the
+request. A flash failure reports status 2 with the previous name, not success.
+
+``src/device_name.c`` owns settings key ``baton/name`` using Zephyr Settings/NVS
+in the board's existing storage partition. It restores and validates the name
+before Bluetooth becomes usable, with ``Smart Baton`` as the default. Flash
+writes run on a dedicated work queue instead of the BLE RX callback or sensor
+loop. ``bt_set_name()`` updates the GAP name after a successful save. Generic GAP
+name writes are disabled so they cannot bypass this persistent protocol. This
+feature does not enable bonding or change the existing connected-client access
+model. Rename while practice is stopped; flash operations can affect real-time
+motion timing, which still needs hardware measurement.
+
+Bluetooth still initializes inactive after every reboot. Triple-press to
+advertise; after renaming, disconnect/re-advertise to publish the new name. A
+normal reboot preserves it. Erase/recover operations clear stored settings.
+iOS and other scanners may temporarily show cached names; the app reads the
+committed name from the baton after connection. PC tools using the default
+``Smart Baton`` name filter need the new name or an explicit BLE address.
+
+Build/flash the updated DK firmware from an NCS v3.4.0 terminal::
+
+    west build --no-sysbuild -p always -d build-lsm6dsox-dk -b nrf52840dk/nrf52840 -- -DDTC_OVERLAY_FILE=nrf52840dk_nrf52840.overlay
+    west flash -d build-lsm6dsox-dk
+
+Install the companion Musical Baton iOS build, connect, and open Settings →
+Connected batons → Your baton → Baton Bluetooth name → Save on baton. Wait for
+confirmation, reconnect/reboot, and check discovery from another phone. Older
+firmware remains connectable but cannot accept device-name changes.
+
+Host protocol and deferred-storage state checks::
+
+    cc -std=c11 -Wall -Wextra -Werror -Isrc src/name_protocol.c tests/name_protocol_test.c -o /tmp/baton-name-protocol-checks
+    /tmp/baton-name-protocol-checks
+    cc -std=c11 -Wall -Wextra -Werror -DCONFIG_BT_DEVICE_NAME_MAX=20 '-DCONFIG_BT_DEVICE_NAME="Smart Baton"' -Itests/name_fakes -Isrc src/name_protocol.c src/device_name.c tests/name_service_test.c -o /tmp/baton-name-service-checks
+    /tmp/baton-name-service-checks
+
+The storage tests compile the production worker against deterministic host fakes;
+they cover restore, pending state, busy rejection, confirmed commit, storage/queue
+failures, retry and idempotent writes. They do not validate NVS on the nRF, thread
+races, power-loss recovery or radio behavior. No overlay or sensor settings were
+changed. DK build and host checks pass; flashing, reboot persistence, long UTF-8
+names, maximum-length readback and two-phone discovery require hardware QA.

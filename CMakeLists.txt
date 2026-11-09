@@ -9,6 +9,8 @@ target_sources(app PRIVATE
   src/sensor.c
   src/conducting.c
   src/bluetooth.c
+  src/device_name.c
+  src/name_protocol.c
   src/button.c
   src/led.c
 )
