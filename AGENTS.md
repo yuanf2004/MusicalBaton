@@ -163,7 +163,7 @@ channels.
 `src/sensor.c` uses the Zephyr sensor API and the `baton-imu` devicetree alias.
 NCS v3.4.0 uses `st,lsm6dso` / `CONFIG_LSM6DSO` for basic LSM6DSOX motion
 registers (matching WHO_AM_I value 0x6C). Both DK and PCB overlays configure
-52 Hz acceleration and gyro, +/-4 g and +/-1000 degrees/second ranges.
+416 Hz acceleration and gyro, +/-4 g and +/-1000 degrees/second ranges.
 Accelerometer LPF2 uses ODR/10 (approximately 5.2 Hz) via `accel-lp-filter`;
 all console/BLE acceleration samples are filtered in hardware. Gyroscope filter
 settings remain at the driver defaults.
@@ -176,8 +176,8 @@ Successful six-axis samples print to the 115200-baud serial console approximatel
 every 50 ms, one sample per line, even when Bluetooth is inactive.
 `CONFIG_LOG_PRINTK=n` routes prints directly to UART to avoid deferred-log batching.
 IMU nodes use `zephyr,deferred-init`; `sensor_init()` waits 100 ms before
-calling `device_init()` and another 500 ms after initialization for filter/measurement
-settling (20 accelerometer samples at 52 Hz take approximately 385 ms). Revisit
+calling `device_init()` and another 100 ms after initialization for filter/measurement
+settling (20 accelerometer samples at 416 Hz take approximately 48 ms). Revisit
 this wait when adjusting ODR or filtering. Initialization failure prints identity probes at both SA0 addresses. Readings are converted to mg and
 0.1 degrees/second, rounded, and clamped to signed 16 bits. Failed reads leave
 the output unchanged and are not published over BLE.

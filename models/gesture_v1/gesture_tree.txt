@@ -1,0 +1,907 @@
+|--- gyro_norm_dps_tenths_rms <= 172.07
+|   |--- gyro_y_dps_tenths_max <= 93.50
+|   |   |--- accel_x_mg_min <= -111.50
+|   |   |   |--- accel_norm_mg_mean <= 1069.54
+|   |   |   |   |--- gyro_x_dps_tenths_min <= 22.50
+|   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak <= 287.00
+|   |   |   |   |   |   |--- accel_y_mg_std <= 37.53
+|   |   |   |   |   |   |   |--- accel_x_mg_min <= -161.50
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 73.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak <= 66.63
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 464.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  464.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak >  66.63
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_rms <= 353.76
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_rms >  353.76
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  73.50
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_min <= -361.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_std <= 10.77
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_std >  10.77
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_min >  -361.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max <= -301.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max >  -301.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |--- accel_x_mg_min >  -161.50
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean <= -442.30
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean >  -442.30
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max <= 1029.04
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max >  1029.04
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |--- accel_y_mg_std >  37.53
+|   |   |   |   |   |   |   |--- accel_x_mg_min <= -387.50
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= 55.88
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_mean <= 987.18
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_mean >  987.18
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  55.88
+|   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |--- accel_x_mg_min >  -387.50
+|   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak <= 65.50
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 3.68
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  3.68
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak >  65.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak <= 103.96
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak >  103.96
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak >  287.00
+|   |   |   |   |   |   |--- accel_x_mg_rms <= 341.56
+|   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- accel_x_mg_rms >  341.56
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |--- gyro_x_dps_tenths_min >  22.50
+|   |   |   |   |   |--- class: down
+|   |   |   |--- accel_norm_mg_mean >  1069.54
+|   |   |   |   |--- class: down
+|   |   |--- accel_x_mg_min >  -111.50
+|   |   |   |--- gyro_z_dps_tenths_min <= -90.50
+|   |   |   |   |--- accel_x_mg_peak_to_peak <= 52.50
+|   |   |   |   |   |--- class: left
+|   |   |   |   |--- accel_x_mg_peak_to_peak >  52.50
+|   |   |   |   |   |--- class: right
+|   |   |   |--- gyro_z_dps_tenths_min >  -90.50
+|   |   |   |   |--- accel_x_mg_max <= -23.00
+|   |   |   |   |   |--- accel_x_mg_rms <= 71.39
+|   |   |   |   |   |   |--- accel_z_mg_min <= 911.50
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |--- accel_z_mg_min >  911.50
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |--- accel_x_mg_rms >  71.39
+|   |   |   |   |   |   |--- class: idle
+|   |   |   |   |--- accel_x_mg_max >  -23.00
+|   |   |   |   |   |--- class: left
+|   |--- gyro_y_dps_tenths_max >  93.50
+|   |   |--- accel_x_mg_max <= -333.50
+|   |   |   |--- gyro_z_dps_tenths_rms <= 77.62
+|   |   |   |   |--- accel_norm_mg_max <= 1016.58
+|   |   |   |   |   |--- class: idle
+|   |   |   |   |--- accel_norm_mg_max >  1016.58
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean <= -13.69
+|   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean >  -13.69
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= -79.51
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  -79.51
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |--- gyro_z_dps_tenths_rms >  77.62
+|   |   |   |   |--- gyro_x_dps_tenths_mean <= -45.19
+|   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |--- gyro_x_dps_tenths_mean >  -45.19
+|   |   |   |   |   |--- accel_x_mg_min <= -527.50
+|   |   |   |   |   |   |--- accel_z_mg_mean <= 593.81
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |--- accel_z_mg_mean >  593.81
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |--- accel_x_mg_min >  -527.50
+|   |   |   |   |   |   |--- class: left
+|   |   |--- accel_x_mg_max >  -333.50
+|   |   |   |--- gyro_z_dps_tenths_max <= 142.50
+|   |   |   |   |--- accel_norm_mg_max <= 1119.82
+|   |   |   |   |   |--- accel_x_mg_mean <= -333.25
+|   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- accel_x_mg_mean >  -333.25
+|   |   |   |   |   |   |--- accel_norm_mg_min <= 946.36
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- accel_norm_mg_min >  946.36
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std <= 52.46
+|   |   |   |   |   |   |   |   |--- accel_x_mg_min <= -293.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak <= 94.61
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak >  94.61
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |--- accel_x_mg_min >  -293.50
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_max <= 983.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_max >  983.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak <= 89.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak >  89.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std >  52.46
+|   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 914.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_rms <= 1021.02
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_rms >  1021.02
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |--- accel_z_mg_min >  914.50
+|   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |--- accel_norm_mg_max >  1119.82
+|   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 65.79
+|   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- gyro_x_dps_tenths_rms >  65.79
+|   |   |   |   |   |   |--- class: down
+|   |   |   |--- gyro_z_dps_tenths_max >  142.50
+|   |   |   |   |--- accel_x_mg_std <= 17.84
+|   |   |   |   |   |--- class: left
+|   |   |   |   |--- accel_x_mg_std >  17.84
+|   |   |   |   |   |--- class: right
+|--- gyro_norm_dps_tenths_rms >  172.07
+|   |--- accel_x_mg_min <= -485.50
+|   |   |--- accel_z_mg_mean <= 619.18
+|   |   |   |--- accel_norm_mg_rms <= 1006.53
+|   |   |   |   |--- accel_x_mg_min <= -559.50
+|   |   |   |   |   |--- accel_x_mg_min <= -905.00
+|   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- accel_x_mg_min >  -905.00
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -1302.50
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -1302.50
+|   |   |   |   |   |   |   |--- accel_y_mg_mean <= 287.74
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 67.50
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean <= -549.04
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_mean <= 302.28
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_mean >  302.28
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean >  -549.04
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  67.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_mean <= 963.28
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= -1323.57
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  -1323.57
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_mean >  963.28
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- accel_y_mg_mean >  287.74
+|   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 289.50
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_z_mg_min >  289.50
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |--- accel_x_mg_min >  -559.50
+|   |   |   |   |   |--- gyro_z_dps_tenths_min <= -217.00
+|   |   |   |   |   |   |--- accel_z_mg_min <= 154.00
+|   |   |   |   |   |   |   |--- accel_y_mg_mean <= -214.88
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_y_mg_mean >  -214.88
+|   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- accel_z_mg_min >  154.00
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak <= 702.50
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= -460.50
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  -460.50
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak >  702.50
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- gyro_z_dps_tenths_min >  -217.00
+|   |   |   |   |   |   |--- accel_y_mg_min <= 94.50
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 118.00
+|   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  118.00
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 681.50
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_std <= 166.54
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_std >  166.54
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  681.50
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -158.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -158.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- accel_y_mg_min >  94.50
+|   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |--- accel_norm_mg_rms >  1006.53
+|   |   |   |   |--- gyro_y_dps_tenths_min <= -482.50
+|   |   |   |   |   |--- class: down
+|   |   |   |   |--- gyro_y_dps_tenths_min >  -482.50
+|   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 238.59
+|   |   |   |   |   |   |--- accel_x_mg_max <= -708.50
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |--- accel_x_mg_max >  -708.50
+|   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |--- gyro_norm_dps_tenths_min >  238.59
+|   |   |   |   |   |   |--- class: diagonal_up
+|   |   |--- accel_z_mg_mean >  619.18
+|   |   |   |--- gyro_z_dps_tenths_min <= -310.50
+|   |   |   |   |--- gyro_y_dps_tenths_mean <= -423.07
+|   |   |   |   |   |--- accel_y_mg_mean <= 442.76
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= -1450.74
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  -1450.74
+|   |   |   |   |   |   |   |--- accel_x_mg_std <= 100.69
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max <= 1830.51
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms <= 612.98
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms >  612.98
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max >  1830.51
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_x_mg_std >  100.69
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms <= 1310.45
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -1693.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -1693.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms >  1310.45
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- accel_y_mg_mean >  442.76
+|   |   |   |   |   |   |--- class: down
+|   |   |   |   |--- gyro_y_dps_tenths_mean >  -423.07
+|   |   |   |   |   |--- accel_norm_mg_max <= 1777.18
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -562.50
+|   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak <= 828.50
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak >  828.50
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -562.50
+|   |   |   |   |   |   |   |--- accel_z_mg_min <= 525.50
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 43.50
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  43.50
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_z_mg_min >  525.50
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms <= 552.21
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -481.00
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak <= 442.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak >  442.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -481.00
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms >  552.21
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak <= 163.00
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak >  163.00
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- accel_norm_mg_max >  1777.18
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1153.00
+|   |   |   |   |   |   |   |--- accel_x_mg_max <= -31.50
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_max <= 1866.37
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_max >  1866.37
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 821.68
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max <= -198.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max >  -198.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms >  821.68
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_x_mg_max >  -31.50
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1153.00
+|   |   |   |   |   |   |   |--- accel_norm_mg_max <= 2273.57
+|   |   |   |   |   |   |   |   |--- accel_x_mg_mean <= -391.45
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_x_mg_mean >  -391.45
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- accel_norm_mg_max >  2273.57
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |--- gyro_z_dps_tenths_min >  -310.50
+|   |   |   |   |--- gyro_norm_dps_tenths_min <= 196.78
+|   |   |   |   |   |--- accel_z_mg_max <= 1269.50
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_rms <= 245.92
+|   |   |   |   |   |   |   |--- accel_z_mg_mean <= 739.65
+|   |   |   |   |   |   |   |   |--- accel_y_mg_std <= 36.11
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms <= 155.13
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms >  155.13
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_y_mg_std >  36.11
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min <= 859.26
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min >  859.26
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 92.64
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  92.64
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |--- accel_z_mg_mean >  739.65
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_rms <= 1088.67
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_std <= 76.03
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_std >  76.03
+|   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_rms >  1088.67
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_rms >  245.92
+|   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- accel_z_mg_max >  1269.50
+|   |   |   |   |   |   |--- gyro_norm_dps_tenths_peak_to_peak <= 1263.87
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- gyro_norm_dps_tenths_peak_to_peak >  1263.87
+|   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |--- gyro_norm_dps_tenths_min >  196.78
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 118.38
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= -106.33
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= 501.41
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  501.41
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 1033.00
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  1033.00
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  -106.33
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean >  118.38
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_std <= 221.77
+|   |   |   |   |   |   |   |--- accel_y_mg_max <= 474.00
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= -616.00
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 282.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  282.00
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  -616.00
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 333.29
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  333.29
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_min <= -499.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_min >  -499.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- accel_y_mg_max >  474.00
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_std >  221.77
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1376.50
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -1042.00
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std <= 324.17
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std >  324.17
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -1042.00
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1376.50
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max <= 394.00
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak <= 418.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak >  418.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max >  394.00
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |--- accel_x_mg_min >  -485.50
+|   |   |--- gyro_x_dps_tenths_mean <= -9.97
+|   |   |   |--- gyro_z_dps_tenths_mean <= 160.15
+|   |   |   |   |--- accel_norm_mg_rms <= 1157.82
+|   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 448.83
+|   |   |   |   |   |   |--- accel_x_mg_min <= -297.50
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 977.50
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max <= 395.10
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 734.50
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  734.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 72.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: idle
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  72.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max >  395.10
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_mean <= -680.58
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_mean >  -680.58
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= -731.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  -731.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  977.50
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 260.80
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max <= 1283.06
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_max >  1283.06
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms >  260.80
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- accel_x_mg_min >  -297.50
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_mean <= 364.10
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -205.50
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_rms <= 185.41
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max <= -230.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max >  -230.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_rms >  185.41
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -205.50
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 858.00
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  858.00
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_mean >  364.10
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max <= -277.00
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_std <= 66.55
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_std >  66.55
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_std <= 103.32
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_std >  103.32
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max >  -277.00
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= 74.50
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  74.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |--- gyro_x_dps_tenths_rms >  448.83
+|   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 778.05
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms <= 554.29
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_peak_to_peak <= 592.43
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_peak_to_peak >  592.43
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 462.50
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  462.50
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms >  554.29
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max <= -303.00
+|   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_y_mg_max >  -303.00
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min <= 561.64
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min >  561.64
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  778.05
+|   |   |   |   |   |   |   |--- accel_norm_mg_max <= 1491.17
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std <= 403.36
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_std >  403.36
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- accel_norm_mg_max >  1491.17
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |--- accel_norm_mg_rms >  1157.82
+|   |   |   |   |   |--- gyro_y_dps_tenths_min <= 19.50
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 724.23
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= 73.78
+|   |   |   |   |   |   |   |   |--- accel_z_mg_std <= 74.23
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- accel_z_mg_std >  74.23
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean <= -267.65
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean >  -267.65
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 1092.30
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  1092.30
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  73.78
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= -187.77
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  -187.77
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= 386.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  386.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  724.23
+|   |   |   |   |   |   |   |--- accel_z_mg_max <= 2166.50
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |--- accel_z_mg_max >  2166.50
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- gyro_y_dps_tenths_min >  19.50
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -830.00
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 526.41
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms >  526.41
+|   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -830.00
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 590.23
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 755.99
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  755.99
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  590.23
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |--- gyro_z_dps_tenths_mean >  160.15
+|   |   |   |   |--- accel_z_mg_min <= 630.50
+|   |   |   |   |   |--- gyro_norm_dps_tenths_mean <= 1331.13
+|   |   |   |   |   |   |--- accel_z_mg_max <= 1328.50
+|   |   |   |   |   |   |   |--- accel_x_mg_max <= -70.50
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 37.50
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_std <= 103.41
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_std >  103.41
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  37.50
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak <= 804.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_rms <= 515.52
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_rms >  515.52
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak >  804.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak <= 496.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_peak_to_peak >  496.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |--- accel_x_mg_max >  -70.50
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -650.00
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 262.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  262.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -650.00
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= 275.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_max <= 1098.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_max >  1098.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  275.00
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |--- accel_z_mg_max >  1328.50
+|   |   |   |   |   |   |   |--- accel_y_mg_mean <= -60.29
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 676.25
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -821.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 903.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  903.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -821.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1235.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1235.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  676.25
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 398.00
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  398.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- accel_y_mg_mean >  -60.29
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- gyro_norm_dps_tenths_mean >  1331.13
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1373.00
+|   |   |   |   |   |   |   |--- accel_y_mg_rms <= 638.35
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak <= 709.00
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak >  709.00
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min <= 408.89
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min >  408.89
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 973.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  973.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |--- accel_y_mg_rms >  638.35
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 646.50
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean <= 74.45
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 398.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  398.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean >  74.45
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  646.50
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max <= 2268.09
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= -652.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  -652.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max >  2268.09
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1373.00
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -74.50
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean <= -53.69
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -910.00
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 418.55
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  418.55
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -910.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_std <= 200.71
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_std >  200.71
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean >  -53.69
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms <= 656.85
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms >  656.85
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max <= 340.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max >  340.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -74.50
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= -934.50
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  -934.50
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_min <= -76.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 570.18
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  570.18
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_min >  -76.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_rms <= 2546.49
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_rms >  2546.49
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |--- accel_z_mg_min >  630.50
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 182.48
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1613.00
+|   |   |   |   |   |   |   |--- accel_y_mg_max <= -476.00
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= 223.50
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 166.50
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  166.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 203.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  203.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  223.50
+|   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_y_mg_max >  -476.00
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= -172.00
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 137.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max <= -358.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max >  -358.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  137.50
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= 402.31
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  402.31
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  -172.00
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= -154.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  -154.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak <= 47.51
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_peak_to_peak >  47.51
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1613.00
+|   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean >  182.48
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= -695.14
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= 100.00
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_std <= 1165.25
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_mean <= -582.59
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_mean >  -582.59
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak <= 209.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak >  209.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_std >  1165.25
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  100.00
+|   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  -695.14
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 373.79
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms <= 197.36
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_mean <= 1087.57
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_mean >  1087.57
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms >  197.36
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  373.79
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak <= 282.00
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_max <= 1055.00
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= 363.84
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  363.84
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_max >  1055.00
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_peak_to_peak >  282.00
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 786.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min <= 959.55
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min >  959.55
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  786.00
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max <= 281.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_y_mg_max >  281.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |--- gyro_x_dps_tenths_mean >  -9.97
+|   |   |   |--- gyro_y_dps_tenths_mean <= -144.31
+|   |   |   |   |--- gyro_z_dps_tenths_mean <= 72.94
+|   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 798.43
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= -292.00
+|   |   |   |   |   |   |   |--- accel_z_mg_min <= 720.00
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_z_mg_min >  720.00
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  -292.00
+|   |   |   |   |   |   |   |--- accel_z_mg_rms <= 487.59
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_z_mg_rms >  487.59
+|   |   |   |   |   |   |   |   |--- accel_y_mg_min <= -258.00
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean <= 13.21
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_mean >  13.21
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean <= -1279.07
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_mean >  -1279.07
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- accel_y_mg_min >  -258.00
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_std <= 524.12
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_std >  524.12
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -574.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -574.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- gyro_norm_dps_tenths_min >  798.43
+|   |   |   |   |   |   |--- accel_z_mg_min <= 105.50
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max <= 2405.50
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_max >  2405.50
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |--- accel_z_mg_min >  105.50
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= -410.00
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  -410.00
+|   |   |   |   |   |   |   |   |--- accel_y_mg_rms <= 892.03
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms <= 855.58
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_rms >  855.58
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_rms <= 2451.61
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_rms >  2451.61
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_y_mg_rms >  892.03
+|   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |--- gyro_z_dps_tenths_mean >  72.94
+|   |   |   |   |   |--- accel_z_mg_mean <= 751.03
+|   |   |   |   |   |   |--- accel_x_mg_rms <= 257.13
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_std <= 181.54
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |--- gyro_x_dps_tenths_std >  181.54
+|   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |--- accel_x_mg_rms >  257.13
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |--- accel_z_mg_mean >  751.03
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak <= 2095.50
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 458.00
+|   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  458.00
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean <= -318.25
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- accel_y_mg_mean >  -318.25
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak >  2095.50
+|   |   |   |   |   |   |   |--- class: down
+|   |   |   |--- gyro_y_dps_tenths_mean >  -144.31
+|   |   |   |   |--- gyro_z_dps_tenths_mean <= -306.88
+|   |   |   |   |   |--- accel_norm_mg_mean <= 801.86
+|   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- accel_norm_mg_mean >  801.86
+|   |   |   |   |   |   |--- accel_z_mg_mean <= 1506.74
+|   |   |   |   |   |   |   |--- accel_y_mg_rms <= 217.45
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms <= 259.66
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_min <= -146.50
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max <= -75.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- accel_x_mg_max >  -75.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_min >  -146.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_x_mg_rms >  259.66
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak <= 142.00
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_peak_to_peak >  142.00
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- accel_y_mg_rms >  217.45
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_mean <= 1609.52
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_mean <= 594.59
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_z_mg_mean >  594.59
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_max <= 1995.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_max >  1995.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_mean >  1609.52
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 129.54
+|   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  129.54
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min <= 726.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_z_mg_min >  726.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |--- accel_z_mg_mean >  1506.74
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 831.16
+|   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  831.16
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 1745.50
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= -1066.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  -1066.50
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  1745.50
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_peak_to_peak <= 2494.50
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_peak_to_peak >  2494.50
+|   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |--- gyro_z_dps_tenths_mean >  -306.88
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 1281.11
+|   |   |   |   |   |   |--- accel_y_mg_mean <= -96.46
+|   |   |   |   |   |   |   |--- accel_z_mg_mean <= 995.00
+|   |   |   |   |   |   |   |   |--- accel_x_mg_min <= -306.50
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= 132.00
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak <= 280.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_peak_to_peak >  280.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  132.00
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms <= 153.06
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms >  153.06
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |--- accel_x_mg_min >  -306.50
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms <= 186.63
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max <= 1208.63
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- accel_norm_mg_max >  1208.63
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_rms >  186.63
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max <= 42.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_max >  42.00
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |--- accel_z_mg_mean >  995.00
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min <= 632.23
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_rms <= 1150.18
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min <= -94.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_min >  -94.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_rms >  1150.18
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min <= 70.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_min >  70.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: down
+|   |   |   |   |   |   |   |   |--- gyro_norm_dps_tenths_min >  632.23
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min <= 790.88
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min <= 66.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_x_dps_tenths_min >  66.00
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_norm_mg_min >  790.88
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean <= 778.94
+|   |   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |   |--- gyro_y_dps_tenths_mean >  778.94
+|   |   |   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |--- accel_y_mg_mean >  -96.46
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms <= 165.88
+|   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak <= 121.50
+|   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |--- accel_y_mg_peak_to_peak >  121.50
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_max <= 125.50
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |   |   |--- accel_y_mg_max >  125.50
+|   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |   |   |--- gyro_y_dps_tenths_rms >  165.88
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_mean <= 643.71
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_norm_mg_mean >  643.71
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean <= -387.14
+|   |   |   |   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |   |   |   |--- accel_x_mg_mean >  -387.14
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max <= 529.50
+|   |   |   |   |   |   |   |   |   |   |   |--- truncated branch of depth 2
+|   |   |   |   |   |   |   |   |   |   |--- gyro_z_dps_tenths_max >  529.50
+|   |   |   |   |   |   |   |   |   |   |   |--- class: left
+|   |   |   |   |   |--- gyro_y_dps_tenths_mean >  1281.11
+|   |   |   |   |   |   |--- accel_y_mg_max <= -564.00
+|   |   |   |   |   |   |   |--- class: right
+|   |   |   |   |   |   |--- accel_y_mg_max >  -564.00
+|   |   |   |   |   |   |   |--- accel_x_mg_mean <= 17.28
+|   |   |   |   |   |   |   |   |--- accel_x_mg_std <= 61.45
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |   |--- accel_x_mg_std >  61.45
+|   |   |   |   |   |   |   |   |   |--- class: diagonal_up
+|   |   |   |   |   |   |   |--- accel_x_mg_mean >  17.28
+|   |   |   |   |   |   |   |   |--- class: diagonal_up

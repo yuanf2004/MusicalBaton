@@ -12,10 +12,9 @@
 
 #define IMU_NODE DT_ALIAS(baton_imu)
 
-/* AN5272: ODR/10 LPF2 can take 20 samples to settle at 52 Hz (~385 ms).
- * Leave margin before exposing measurements. Revisit if ODR/filter changes.
- */
-#define IMU_MEASUREMENT_SETTLE_MS 500
+/* AN5272: allow at least 20 samples for ODR/10 LPF2 settling. At 416 Hz this
+ * is about 48 ms; retain additional startup margin before exposing samples. */
+#define IMU_MEASUREMENT_SETTLE_MS 100
 
 static const struct device *const imu = DEVICE_DT_GET(IMU_NODE);
 static bool initialized;

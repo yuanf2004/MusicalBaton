@@ -12,14 +12,14 @@ Current behavior
 
 * Uses the Zephyr LSM6DSO driver to check the LSM6DSOX identity and configure
   both accelerometer and gyroscope.
-* Configures both sensors at 208 Hz, with acceleration range +/-4 g and
+* Configures both sensors at 416 Hz, with acceleration range +/-4 g and
   gyroscope range +/-1000 degrees/second.
-* Enables the accelerometer hardware LPF2 at ODR/10 (approximately 20.8 Hz),
+* Enables the accelerometer hardware LPF2 at ODR/10 (approximately 41.6 Hz),
   smoothing all three acceleration axes before console and BLE output.
-* Polls the latest X/Y/Z acceleration and angular velocity every 4,808 microseconds
-  (approximately 208 polls/second; polling is not data-ready synchronized).
+* Polls the latest X/Y/Z acceleration and angular velocity every 2,404 microseconds
+  (approximately 416 polls/second; polling is not data-ready synchronized).
   BLE retains a 50 ms minimum publication interval, checked on each poll; normal
-  4.808 ms cycles yield roughly 53 ms between notifications (about 19 updates/second).
+  2.404 ms cycles yield roughly 50-53 ms between notifications (about 19-20 updates/second).
 * Prints initialization, errors, calibration status, and beat/BPM messages.
   Continuous six-axis console output is disabled for beat testing; set
   ``PRINT_MOTION_SAMPLES`` to ``1`` in ``src/main.c`` and rebuild to restore it.
@@ -45,7 +45,9 @@ Current behavior
 Experimental conducting detector
 --------------------------------
 
-``src/conducting.c`` detects beats at the angular-speed peak of each stroke.
+``src/conducting.c`` uses the committed simple peak-speed detector. Advanced
+direction models remain a separate experiment and do not alter this module or
+its public interface.
 Its interface in ``src/conducting.h`` is ordinary C, independent of Zephyr and
 pin mappings. The main loop feeds successful sensor samples after BLE publication.
 Beat events print to the console and notify subscribed phones using a separate
@@ -63,32 +65,28 @@ release to distinguish two clicks from three. The console then prints
 gyro bias, gravity, stroke, and tempo history and restores the selected sensitivity.
 No beat events are produced during calibration; raw sampling/BLE motion continue.
 Completion prints ``Beat detector calibrated``. Motion can extend the stillness
-wait. Triple-click and ten-second reboot behavior are unchanged. In the phone's
-profile mode, use **Next beat is 1** if the calibration pause loses measure alignment.
+wait. Triple-click and ten-second reboot behavior are unchanged. Beat events are
+unmetered, so recalibration does not require measure realignment.
 Duplicate/backward timestamps are ignored; normal 32-bit uptime wrap is supported.
 A caller replaying a new recording must explicitly reset the detector.
 
 Processing uses all six axes:
 
-* Propagate a body-frame gravity vector with bias-corrected gyroscope rotation.
-  Apply weak accelerometer correction near 1 g, at low rotation, and with a small
-  gravity residual. Subtract estimated gravity for acceleration evidence.
-* Smooth angular-speed magnitude with a 15 ms time constant. Arm at 30 deg/s or above
-  on rising speed and track the stroke's maximum. Once speed falls below 85% of
-  that maximum, report a beat timestamped at the peak sample.
-* Require at least 80 mg of gravity-subtracted acceleration during the stroke.
-  Require at least 100 ms from stroke arming, and expire strokes after 1.5 seconds.
-  Reject classified peaks less than 250 ms after the preceding accepted peak
-  (exactly 250 ms is allowed). After a peak, speed must fall below
-  55% of it (or the arm speed, whichever is higher), then rise again at or above
-  30 deg/s to arm another stroke. Holding still cannot repeatedly trigger beats.
-  No predicted beats are generated.
-* ``timestamp_ms`` is the peak-speed sample; ``detected_ms`` is the later sample
-  that confirmed the drop (typically one to a few samples, roughly 20-110 ms at
-  208 Hz polling depending on how sharply speed falls). Peaks are sample-quantized,
-  not exact physical maxima. Estimate BPM from up to five measured intervals after three intervals
-  agree within 20% of their median. Zero BPM means insufficient/inconsistent
-  evidence. Tempo history expires after two seconds without a beat.
+* Propagate a body-frame gravity vector with bias-corrected gyroscope rotation,
+  apply weak accelerometer correction near 1 g, and subtract gravity to obtain
+  the stroke's acceleration evidence.
+* Smooth total three-axis angular speed with a 15 ms exponential filter. Arm on
+  rising motion at the selected threshold (30 degrees/second for Balanced),
+  retain the maximum, and confirm it after speed falls below 85% of that maximum.
+* Require a minimum 100 ms stroke, sufficient gravity-subtracted acceleration
+  (80 mg for Balanced), and at least 250 ms since the previous accepted peak.
+  Strokes expire after 1.5 seconds.
+* After a beat, require speed to fall below the selected release level (55% of
+  the peak for Balanced, or the arm threshold when larger) before another stroke
+  can arm. Holding still therefore cannot repeatedly trigger beats.
+* ``timestamp_ms`` is the retained peak-speed sample; ``detected_ms`` is the
+  later sample that confirmed the drop. Tempo is estimated only after accepted
+  events and expires after two seconds without a beat.
 
 Illustrative output::
 
@@ -100,12 +98,13 @@ on labeled recordings. Shaking can trigger candidates; translation-only strokes,
 small gestures, and smooth circular motion without a clear angular-speed peak
 may be missed. A beat lands at the fastest point of the stroke, not at the stop
 (ictus) where earlier firmware triggered. Low angular speed does not prove zero translational velocity. Norm-based features require no configured baton axis but
-cannot identify downbeat direction, beat number, or time signature. Gravity may
+does not assign special meaning to downward motion, diagonal-up motion, a
+downbeat, a beat number, or a time signature. Gravity may
 drift under sustained acceleration; differing hardware filter delays can produce
 acceleration residuals even during pure rotation.
 
-Polling now targets 4,808 us; BLE retains its 50 ms publication gate (roughly 53 ms
-between sends on 4.808 ms cycles). The IMU ODR is 208 Hz on both sensor channels.
+Polling now targets 2,404 us; BLE retains its 50 ms publication gate (roughly 50-53 ms
+between sends). The IMU ODR is 416 Hz on both sensor channels.
 Sampling, hardware filtering, and smoothing still add latency; equal event and
 detection timestamps do not mean zero physical motion-to-output delay. Beat lines add UART load.
 Measure timing with logging enabled and disabled before performance claims.
@@ -128,15 +127,22 @@ Windows PC audio cues (no phone app)
 ------------------------------------
 
 ``tools/pc_audio_cues.py`` listens to the DK's USB serial console and plays a
-short tone through the PC's default audio output. By default every beat uses
-the same 25 ms cue, with no 4/4 downbeat emphasis. Each cue is driven by the ``BEAT:`` event that
+short tone through the PC's default audio output. Every audible event uses the
+same 25 ms cue. There is no measure counter, downbeat, or configured time
+signature. Each cue is driven by the ``BEAT:`` event that
 ``conducting.c`` produces from real IMU samples. This path needs no Bluetooth
 adapter, phone app, or sound files.
 
-Connect the DK by USB, install the serial dependency, and run the listener::
+Connect the DK by USB, install the serial dependency and low-latency audio
+backend, and run the listener::
 
-   py -m pip install pyserial
-   py tools/pc_audio_cues.py
+   py -m venv .venv
+   .venv\Scripts\python -m pip install pyserial sounddevice
+   .venv\Scripts\python tools\pc_audio_cues.py
+
+Using the virtual-environment interpreter is important: installing a package
+with one Python and launching the script with another silently selects the
+``winsound`` fallback. The project ``.gitignore`` excludes ``.venv``.
 
 The script automatically selects a single SEGGER/J-Link/nRF serial port when
 possible. If selection is ambiguous, set ``serial_port`` (for example ``COM5``)
@@ -144,13 +150,145 @@ in ``tools/pc_audio_cues.json``. Keep ``serial_baud`` at the firmware's 115200.
 Close any other serial terminal first because only one program can own the COM
 port at a time.
 Hold the baton still until calibration completes, then conduct; non-beat console
-messages remain visible and every detected ``BEAT:`` line advances the audible
-measure. Stop with Ctrl+C.
+messages remain visible and a detected ``BEAT:`` line plays only when its
+strength is strictly above ``strength_threshold`` in
+``tools/pc_audio_cues.json`` (50 by default). Events at or below the threshold
+are still printed and recorded but do not play audio. The same filter applies
+to serial and BLE live modes. The audio device remains open between cues to avoid per-click startup
+latency. A continuously running 128-frame callback inserts or replaces the cue
+within about 2.7 ms at 48 kHz instead of queuing blocking audio writes. Only the newest pending cue is retained, and 100 ms at or below 5 deg/s
+clears it. Audio is queued before CSV writes, and diagnostic files flush once
+per second rather than once per sample. On Windows, the script selects the
+WASAPI instance matching the default output device when available; this avoids
+the much larger MME buffer. It prints the selected API, device, and reported
+latency at startup. Without ``sounddevice``, the script falls back to ``winsound.Beep``.
+Stop with Ctrl+C.
 
-Use ``--test`` to play the two configured tones once, or ``--demo`` to play a
-synthetic pattern at the configured ``bpm`` without the IMU. Edit the JSON to
-change tone frequencies and durations. Set ``emphasize_beat_1`` to ``true`` to
-restore a distinct beat-1 tone; ``beats_per_measure`` then controls its interval.
+Use ``--test`` to play the configured tone once, or ``--demo`` to play an
+unmetered synthetic pulse at the configured ``bpm`` without the IMU. Edit the
+JSON's single ``beat`` object to change its frequency and duration.
+Set ``strength_threshold`` from 0 through 99 to tune the audible-event floor;
+playback requires ``strength > strength_threshold``.
+
+Recording conducting diagnostics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The firmware emits a compact ``CD`` diagnostic line at approximately 40 Hz for
+real-motion tuning while continuing to acquire the IMU at 416 Hz. Record a run
+and play cues at the same time with::
+
+   py tools/pc_audio_cues.py --record conducting-60.csv
+
+Repeat with clear, steady trials near 60, 100, 140, 170, and 200 BPM, using both
+discrete strokes and continuous loops. Hold still for calibration before each
+trial and leave several seconds of stillness at its beginning and end. Use a
+separate filename for every trial and note the intended tempo/style.
+
+The main CSV contains device time, all three gyro and accelerometer axes,
+smoothed angular-speed magnitude, gravity-subtracted acceleration, arm/release
+state, prediction state, relative-orientation phase, and filtered phase
+rate. The motion-mode field is ``0`` while undecided, ``1`` for discrete
+linear strokes, and ``2`` for continuous loops. The final field records linear
+direction coherence from 0 through 1000. It is diagnostic only; curved strokes
+with low coherence remain eligible. A second ``*-beats.csv`` file records every emitted
+event, including its predicted flag; keep both files together. The diagnostic
+recorder also accepts the earlier diagnostic format; its unavailable raw
+accelerometer-axis columns are left empty. The diagnostic
+stream is deliberately decimated to reduce UART load; raw acquisition remains
+416 Hz. ``PRINT_CONDUCTING_DIAGNOSTICS`` in ``src/main.c`` can be set to ``0``
+after data collection. UART output still adds timing load, so final latency must
+also be measured with diagnostics disabled.
+
+Lossless gesture-training capture
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For MLC/FSM dataset collection, make a separate DK build with the training
+configuration and 1 Mbaud UART overlay::
+
+   west build --no-sysbuild -p always -d build-training -b nrf52840dk/nrf52840 -- \
+     -DDTC_OVERLAY_FILE="nrf52840dk_nrf52840.overlay;boards/training_capture.overlay"
+
+The presence of the training overlay disables the text ``CD`` stream and writes one
+22-byte binary ``MBR1`` record for every successful 416 Hz sample. Each record
+contains a 16-bit sequence, 32-bit device timestamp, accelerometer XYZ in mg,
+and gyroscope XYZ in 0.1 degrees/second, all little-endian. The sequence exposes
+dropped records. At 416 Hz this consumes about 9.2 kB/s. The dedicated overlay
+uses 1 Mbaud so streaming does not consume most of each 2.404 ms sampling period;
+avoid opening a second serial client and keep unrelated console activity low.
+
+Install ``pyserial`` and start a labeled recording with::
+
+   .venv\Scripts\python tools\capture_training.py direction-session-001.csv --port COM3
+
+The recorder resynchronizes on ``MBR1`` markers and writes host time, session
+time, the active label, sequence, device time, and all six axes. Press ``0`` for
+idle and the down/left/right arrow keys for their matching
+stroke classes, the up arrow for diagonal-up, and ``q`` to stop. Clockwise and
+counterclockwise are not labels. Change the label before each prompted gesture and
+include idle between trials. Do not record ordinary motion as a competing
+``non_beat_motion`` direction class: an ordinary movement can have the same
+short-window geometry as an intentional beat.
+The keyboard label is
+host-timed, so later segmentation should retain margin around label changes.
+
+Offline gesture-model baseline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install scikit-learn in the project virtual environment, then train the compact
+gesture decision-tree baseline from complete sessions::
+
+   .venv\Scripts\python -m pip install scikit-learn
+   .venv\Scripts\python tools\train_gesture_model.py direction-session-001.csv direction-session-002.csv direction-session-003.csv
+
+The trainer rejects corrupt/nonmonotonic packets, reports inferred losses,
+removes 50 ms around host label changes, and extracts causal 200 ms windows at
+25 ms strides. Features are mean, standard deviation, minimum, maximum, RMS, and
+peak-to-peak range for all six axes plus acceleration and gyro norms. It trains a
+depth-limited, class-balanced decision tree and evaluates by holding out each
+entire session; it never randomly mixes neighboring windows across train/test.
+Artifacts are written to ``models/gesture_v1``: a joblib model, readable tree,
+and JSON report with per-class metrics and confusion matrices.
+
+The earlier three-session baseline included ``non_beat_motion`` as a peer class
+and is retained only as an experiment; collect a new direction-only dataset for
+the next model. The first three-session baseline is not ready for firmware or MLC deployment.
+After adapting the transition margin to per-stroke arrow-key labels, held-out
+accuracies are 65.2%, 64.8%, and 71.3%. Direction classification is now learned
+but remains uneven: held-out direction F1 ranges from 0.29 to 0.67, with left
+and right generally weaker than down and diagonal-up. The current
+gesture-level label spans preparation, intended stroke, and recovery, so it can
+train a coarse activity classifier but does not identify the physical beat
+instant or prove early prediction. Add more session-independent data and
+beat-phase annotations before converting a tree to an LSM6DSOX UCF model.
+
+The trained ``joblib`` artifact is a PC-side direction classifier, not firmware
+and not a beat-timing detector. Keep the simple ``conducting_process()`` peak
+detector as the timing gate. A separate classifier can consume rolling 200 ms
+motion windows, smooth consecutive direction outputs, and associate the latest
+stable direction with an accepted peak. Validate that combination by replaying
+held-out sessions before implementing it on the baton. A scikit-learn random
+forest cannot run directly in the LSM6DSOX MLC; deployment requires either a
+small embedded-C model on the nRF52840 or an MLC-compatible decision tree
+exported as an ST ``.ucf`` configuration. Neither path requires changes to
+``src/conducting.c`` or ``src/conducting.h``.
+
+The serial cue program exposes that combined experiment without changing the
+firmware detector. Use the committed peak detector alone with::
+
+   .venv\Scripts\python tools\pc_audio_cues.py --detector peak
+
+Or require the baseline direction tree to classify the current window as
+non-idle before playing the same peak event::
+
+   .venv\Scripts\python tools\pc_audio_cues.py --detector peak-ml --model models\gesture_v1\gesture_tree.joblib
+
+``peak-ml`` reports the selected direction on each played event. It uses the
+40 Hz ``CD`` diagnostic stream, while the current tree was trained from 416 Hz
+capture, so this is an integration experiment rather than validated accuracy.
+It does not replace the peak timestamp with an ML-generated timestamp. The ML
+choice currently requires USB serial mode; BLE beat notifications do not carry
+the six-axis window. Both modes still apply ``strength_threshold`` from
+``tools/pc_audio_cues.json``; use zero temporarily when checking event flow.
 
 An optional live-baton mode is also available. It requires a Bluetooth adapter
 and the ``bleak`` package::
@@ -201,10 +339,10 @@ Recommended next steps, in order:
    Accelerometers observe both gravity and motion; see
    `NXP AN3461 <https://www.nxp.com/docs/en/application-note/AN3461.pdf>`_.
 3. Evaluate roughly 50 Hz acquisition/publication and data-ready/FIFO operation,
-   decimating console prints. Measure the existing 20.8 Hz filter delay before
+   decimating console prints. Measure the existing 41.6 Hz filter delay before
    selecting wider bandwidth. Revalidate overlays if hardware settings change.
-4. Learn a conducting plane or calibrate grip orientation for directional and
-   pattern features. Use this detector as a baseline; train a small temporal
+4. Calibrate grip orientation for directional beat-pattern features beyond the
+   axis-independent speed and relative-rotation baseline. Train a small temporal
    classifier once labeled recordings justify it, including a non-conducting class.
 5. Add separately marked prediction/audio scheduling only after measured accuracy
    and device-to-phone clock mapping are established.
@@ -338,14 +476,13 @@ not the IMU internal measurement time or phone delivery time. The packet version
 20-byte layout are unchanged. Failed sensor reads are not published. Enable
 notifications on the characteristic to receive updates.
 
-Conducting profile settings
----------------------------
+Conducting sensitivity settings
+-------------------------------
 
-The companion app saves named profiles locally with beats per measure (2/3/4),
-beat-1 and other-beat sounds, and sensitivity. These are manual configuration
-profiles, not trained gesture templates. The MCU detects beats and the phone counts
-them and selects sounds; the beat event's sequence is not a musical beat number.
-Sound choice and meter need no extra byte in the beat packet.
+The firmware and PC cue client treat the beat stream as unmetered. The event
+sequence is a transport counter, not a musical beat number. Meter and downbeat
+selection are intentionally absent. A separate companion app is outside this
+repository and must apply the same policy independently.
 
 New characteristic ``12345678-1234-5678-1234-56789abcdef3`` in the existing service
 supports read and write-with-response. Its four-byte packet is
@@ -353,30 +490,28 @@ supports read and write-with-response. Its four-byte packet is
 Read returns the current requested setting in the same format. Wrong length,
 nonzero offset, prepared writes, and unsupported bytes/presets are rejected.
 
-================= ============ ============ ======================
-Preset / ID       Arm speed    Accel floor  Rearm below
-================= ============ ============ ======================
-Balanced / 0      30 deg/s     80 mg        55% of peak
-Deliberate / 1    40 deg/s     120 mg       45% of peak
-Gentle / 2        22 deg/s     55 mg        60% of peak
-================= ============ ============ ======================
+================= ============ ============
+Preset / ID       Arm speed    Rearm below
+================= ============ ============
+Balanced / 0      25 deg/s     60% of peak
+Deliberate / 1    40 deg/s     55% of peak
+Gentle / 2        22 deg/s     65% of peak
+================= ============ ============
 
-Balanced preserves the existing default. All confirm a peak at an 85% drop and
-retain the 100 ms minimum stroke, 250 ms beat separation, and fresh-motion rearm requirement.
+Balanced is the default. All confirm a speed maximum after two falling samples
+and the preset prominence decline, require a fixed 35 ms minimum stroke, enforce
+a fixed 300 ms output separation, and require the same clear speed valley before
+rearming. Smooth-loop phase is the net 3D
+orientation change, so reversing a partial turn cannot accumulate into duplicate
+180-degree beats.
 Gentle may increase false positives. BLE callbacks only store an atomic preset
 request; the main sampling thread applies changes before detection and clears
 stroke/tempo history while preserving calibration. A sensor gap recalibrates but
 keeps the selected preset. Reboot resets to Balanced. There is no flash storage
-for profiles in the MCU. The phone reapplies its selected preset on every activation,
-waits for write acknowledgement/readback and subscription, then enables sounds.
-Readback confirms the request, not the exact sample at which it took effect.
-
-In the app, open Saved Profiles to create/select one, then enable Conducting Mode.
-The next detected event counts as beat 1; Test Beat 1 Sound and Test Other Beat
-Sound preview the voices without advancing the measure. Next beat is 1 resets
-alignment. A >2 s event pause or BLE sequence gap pauses sound until that reset;
-missed/extra MCU detections may still shift the count. Automatic gesture-pattern
-recognition is not implemented. Validate sensitivity and audio timing on hardware.
+for profiles in the MCU. A client may reapply its selected preset on activation;
+readback confirms the request, not the exact sample at which it took effect.
+Automatic gesture-pattern recognition is not implemented. Validate sensitivity
+and audio timing on hardware.
 
 Bluetooth beat events
 ---------------------
@@ -388,7 +523,7 @@ The fixed 12-byte little-endian format is:
 
 * Byte 0: version 1; byte 1: event type 1 (detected beat).
 * Bytes 2-3: unsigned 16-bit beat sequence.
-* Bytes 4-7: unsigned 32-bit peak-speed uptime in milliseconds.
+* Bytes 4-7: unsigned 32-bit observed beat uptime in milliseconds.
 * Bytes 8-9: BPM times 10; zero indicates an unstable/unavailable estimate.
 * Byte 10: motion strength, 0-100; byte 11: reserved, zero.
 
@@ -424,7 +559,7 @@ Streaming timing verification and next step
 On the DK, subscribe from the iOS app and record packet timestamps, sequence
 numbers, and phone receipt times for at least a minute, including motion and
 button activity. Compare unsigned timestamp differences (allow 32-bit wrap):
-expect roughly 53 ms between BLE packets during normal 208 Hz polling, with larger gaps on failed reads
+expect roughly 50-53 ms between BLE packets during normal 416 Hz polling, with larger gaps on failed reads
 or delayed work. Check sequence differences modulo 65536: normally +1 during
 an uninterrupted subscribed session. Sequences count publication attempts,
 including updates while advertising and failed notifications, rather than
@@ -434,8 +569,8 @@ packet timing from batches delivered to the app. Repeat connect/disconnect,
 triple-click activation/deactivation, advertising expiry, and LED checks.
 Build success alone does not establish delivery rate or motion accuracy.
 
-Acquisition now targets 4,808 us. After validating this baseline, optionally reduce
-the BLE publication interval if higher-rate streaming is required. The 208 Hz IMU produces a new output
+Acquisition now targets 2,404 us. After validating this baseline, optionally reduce
+the BLE publication interval if higher-rate streaming is required. The 416 Hz IMU produces a new output
 about every 4.8 ms; polling is not synchronized to data-ready, so consider
 interrupt/data-ready acquisition or FIFO for consistent fresh measurements.
 Reduce or decimate sample printing at this rate. Measure the actual negotiated
@@ -445,12 +580,12 @@ accepts. Connection parameters are documented in the `Zephyr connection API
 <https://docs.zephyrproject.org/latest/doxygen/html/group__bt__conn.html>`_.
 Faster publication alone does not establish lower end-to-end latency.
 
-The current baseline uses a 208 Hz ODR and ODR/10 accelerometer LPF2. Before precise
+The current baseline uses a 416 Hz ODR and ODR/10 accelerometer LPF2. Before precise
 beat-to-audio timing claims, measure accelerometer LPF2 response delay at its
-approximately 20.8 Hz cutoff, gyroscope response, acquisition jitter, BLE delivery
+approximately 41.6 Hz cutoff, gyroscope response, acquisition jitter, BLE delivery
 jitter, phone audio latency, and clock offset/drift (time synchronization is
 still absent). Revisit filter bandwidth and settling if changing ODR/filter
-settings. The 208 Hz acquisition target is enabled; BLE retains its 50 ms gate.
+settings. The 416 Hz acquisition target is enabled; BLE retains its 50 ms gate.
 
 Bluetooth LED troubleshooting
 -----------------------------
@@ -547,11 +682,11 @@ for the primary I2C output path are:
 See the `ST datasheet filtering/register tables <https://www.st.com/resource/en/datasheet/lsm6dsox.pdf>`_
 and `ST AN5272, sections 3.8 and 3.10 <https://www.st.com/resource/en/application_note/an5272-lsm6dsox-alwayson-3d-accelerometer-and-3d-gyroscope-stmicroelectronics.pdf>`_.
 
-Current overlays run both sensors at 208 Hz in their default high-performance
-mode, with accelerometer LPF2 enabled at ODR/10 = 20.8 Hz. Gyroscope filter
+Current overlays run both sensors at 416 Hz in their default high-performance
+mode, with accelerometer LPF2 enabled at ODR/10 = 41.6 Hz. Gyroscope filter
 configuration stays at the driver defaults. Without LPF2, the accelerometer
 LPF1 bandwidth is ODR/2 = 104 Hz. Accelerometer LPF2 options include
-ODR/4 = 52 Hz, ODR/10 = 20.8 Hz, and ODR/20 = 10.4 Hz. Stronger filtering
+ODR/4 = 104 Hz, ODR/10 = 41.6 Hz, and ODR/20 = 20.8 Hz. Stronger filtering
 reduces fast noise but also smooths intended motion and changes timing.
 
 The installed NCS v3.4.0 Zephyr LSM6DSO driver exposes ``accel-lp-filter``.
@@ -559,7 +694,7 @@ All supplied IMU overlays now configure::
 
    accel-lp-filter = <LSM6DSO_DT_LP_ODR_DIV_10>;
 
-At 208 Hz this selects approximately 20.8 Hz. The driver's zero/default value
+At 416 Hz this selects approximately 41.6 Hz. The driver's zero/default value
 (``LSM6DSO_DT_LP_ODR_DIV_2``) skips enabling LPF2; it must not be treated as
 an explicit ODR/4 LPF2 setting despite the hardware's zero cutoff encoding.
 The driver has no matching gyroscope filter property or filter attribute;
@@ -568,7 +703,7 @@ updates after driver initialization. Verify against the installed driver,
 not just a newer online binding.
 
 AN5272 lists up to 20 sensor samples for ODR/10 or ODR/20 settling,
-approximately 96 ms at 208 Hz. ``sensor_init()`` conservatively waits 500 ms after driver
+approximately 48 ms at 416 Hz. ``sensor_init()`` waits 100 ms after driver
 initialization before allowing reads. Revisit this wait when changing sensor
 ODR or the filter cutoff, especially for stronger filtering.
 
@@ -577,7 +712,7 @@ and quick conducting motions before and after, including peak magnitude and
 response delay. High-pass filtering removes DC/gravity information, so it is
 not a default replacement for acceleration used for tilt/orientation. Filtering
 also does not calibrate gyro zero-rate bias (the experimental detector estimates
-bias internally without changing raw samples). The firmware polls at roughly 208 Hz and
+bias internally without changing raw samples). The firmware polls at roughly 416 Hz and
 BLE publishes at about 19 Hz with the current gate; evaluate bandwidth against the rate of the data
 actually consumed, or increase acquisition/publication rates for faster motions.
 The hardware filter applies to all acceleration samples sent to the terminal
@@ -590,7 +725,7 @@ Troubleshooting IMU initialization
 ----------------------------------
 
 The IMU nodes use ``zephyr,deferred-init``. ``sensor_init()`` waits 100 ms
-before the first driver transaction, then waits another 500 ms after successful
+before the first driver transaction, then waits another 100 ms after successful
 initialization before sampling. This avoids accessing the sensor during power-up;
 the LSM6DSOX datasheet lists a typical turn-on time of 35 ms. The earlier wait
 only happened after driver initialization and could not protect the first write.
@@ -623,7 +758,7 @@ port, for example::
 Raw sample printing is currently disabled so beat/BPM messages are easier to see.
 To restore it, set ``PRINT_MOTION_SAMPLES`` to ``1`` in ``src/main.c``, rebuild,
 and flash. With that option enabled, the loop attempts to print each successful
-208 Hz sample without needing to enable Bluetooth::
+416 Hz sample without needing to enable Bluetooth::
 
    IMU accel [mg]: X=12 Y=-8 Z=1001 | gyro [0.1 deg/s]: X=0 Y=-1 Z=2
 
@@ -631,21 +766,21 @@ Acceleration is in mg (1000 mg = 1 g). Gyroscope integers are in tenths of a
 degree/second: ``-1`` means -0.1 deg/s and ``25`` means 2.5 deg/s. At rest,
 the acceleration vector should have magnitude near 1000 mg and gyro values
 should be near zero; tilt and rotate the board to check changes. The main
-sampling loop targets 4,808 us; BLE retains a 50 ms minimum gate, typically producing
+sampling loop targets 2,404 us; BLE retains a 50 ms minimum gate, typically producing
 about 53 ms publication spacing with this polling loop.
 ``SENSOR_POLL_INTERVAL_US`` and ``BLE_PUBLISH_INTERVAL_MS`` in ``src/main.c``
 name these intervals; only samples fetched after the publication gate expires
 are published while Bluetooth is active. Notifications require a subscribed connection. ``CONFIG_LOG_PRINTK=n`` sends each ``printk``
 directly to UART instead of collecting it in the deferred logger for up to a
-second. With sample printing enabled, each loop prints one fresh sample and uses a new 4,808 us deadline,
+second. With sample printing enabled, each loop prints one fresh sample and uses a new 2,404 us deadline,
 without a burst of catch-up prints. Failed reads print
 an error instead of a stale sample. Timing may be delayed by sensor I/O,
 scheduling, Bluetooth calls, or button
 handling. Publication precedes sample printing. The longest sample line
 (102 ASCII bytes with six signed 16-bit values) occupies about 8.9 ms at
-115200 baud, 8N1 (about 9 ms with CR/LF translation), which exceeds the 4.808 ms
+115200 baud, 8N1 (about 9 ms with CR/LF translation), which exceeds the 2.404 ms
 sampling budget; formatting and other console messages add overhead. Leave raw
-printing disabled for 208 Hz acquisition and confirm timing on hardware
+printing disabled for 416 Hz acquisition and confirm timing on hardware
 with serial output enabled, and compare against a build with sample printing
 disabled if jitter is significant. Failed reads retain the existing one-second
 backoff and publish nothing. Notification failures print their error code; the
@@ -666,6 +801,55 @@ Development rules
 
 Recent changes
 --------------
+
+416 Hz training-capture foundation: both overlays now configure accelerometer
+and gyroscope at 416 Hz, the polling target is 2,404 us, accelerometer LPF2 is
+ODR/10 (approximately 41.6 Hz), and the post-init settling wait is 100 ms. The
+25 ms speed history grew to 16 entries so the higher rate does not truncate its
+window. An optional 22-byte ``MBR1`` UART stream and interactive PC recorder
+capture every successful sample with labels for down, lateral, diagonal-up,
+loop, idle, and non-beat motion. BLE remains gated at 50 ms. Hardware must still
+verify actual freshness, UART loss rate, filter response, and sensor timing.
+
+Curved-stroke and unmetered playback update: linear peak acceptance no longer
+requires an 85% fixed-axis direction-coherence score, allowing diagonal and
+arcing gestures. Direction coherence remains in diagnostics. To prevent a curved
+follow-through from producing clustered events, Balanced now requires speed to
+fall below 60% of the accepted peak before rearming; Deliberate uses 55% and
+Gentle 65%. All event sources share a 300 ms output guard. The PC cue client now
+has one ``beat`` sound and no measure/downbeat/time-signature state. Host tests
+cover curved strokes, shallow follow-through ripples, and unmetered configuration.
+
+Linear jitter filtering: replaced the 15 ms exponential speed filter with a
+causal, recency-weighted 25 ms rolling window. Entries expire by timestamp, so
+the filter remains bounded when sample spacing varies. At 416 Hz it spans about
+eleven samples while weighting recent motion most heavily. A host regression adds
+alternating 25 deg/s sample jitter to smooth 500 ms strokes and verifies one
+event per gesture. Abrupt drops can still confirm immediately after the required
+12% prominence. Smooth-loop processing was not changed by this update.
+
+Gesture-baseline simplification: removed all beat prediction, tempo-dependent
+acceptance, acceleration corroboration, and exclusive mode ownership. Linear
+gestures are 3D angular-speed maxima with 12% prominence; smooth loops are net
+3D quaternion turns. Both share only a wrap-safe 250 ms deduplication gate.
+Tempo is computed after accepted gestures and cannot suppress detections. The
+diagnostic ``predicted`` field remains for compatibility and is always zero.
+Host tests cover 200 BPM, tempo doubling, shallow speed valleys, arbitrary IMU
+rotation axes, and partial-turn reversal. Hardware validation is still required.
+
+Orientation-based loop detection: smooth U-turns now integrate a quaternion from
+all three gyro axes and compare net relative orientation with the preceding turn.
+The axis can be any combination of IMU X/Y/Z, and a partial turn followed by its
+reverse cancels rather than clustering multiple events. Loop mode locks only
+after a complete near-180-degree turn, so it cannot prematurely suppress the
+linear speed-maximum detector. Output retains the requested 250 ms duplicate
+guard. Host regressions
+cover an arbitrary diagonal axis, tempo acceleration, and repeated 100-degree
+out-and-back rotations. Hardware false-trigger testing is still required.
+
+Superseded candidate/rearm experiment: tempo-relative refractory and predictive
+acceptance were evaluated and removed by the gesture-baseline simplification
+above because they caused harmonic lockout and cross-source duplicates.
 
 Peak-speed beats: the detector now reports each beat at the stroke's angular-speed
 maximum, confirmed when speed falls below 85% of it, instead of waiting for speed

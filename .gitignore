@@ -6,3 +6,4 @@
 /build*/
 
 /nrf52840dk/
+/.venv/
