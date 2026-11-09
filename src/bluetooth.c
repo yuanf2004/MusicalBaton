@@ -1,7 +1,9 @@
 #include "bluetooth.h"
 #include "led.h"
+#include "device_name.h"
 
 #include <stdbool.h>
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/printk.h>
@@ -40,7 +42,31 @@ static struct bt_uuid_128 beat_data_uuid = BT_UUID_INIT_128(
 static uint16_t beat_sequence;
 static struct bt_uuid_128 conducting_settings_uuid = BT_UUID_INIT_128(
 	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef3));
+static struct bt_uuid_128 device_name_uuid = BT_UUID_INIT_128(
+    BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef4));
 static atomic_t conducting_sensitivity;
+
+static ssize_t read_device_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+                               void *buf, uint16_t len, uint16_t offset)
+{
+    uint8_t value[BATON_NAME_VALUE_MAX];
+    size_t count = baton_device_name_snapshot(value);
+    return bt_gatt_attr_read(conn, attr, buf, len, offset, value, count);
+}
+
+static ssize_t write_device_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+                                const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+{
+    ARG_UNUSED(conn);
+    ARG_UNUSED(attr);
+    if (flags & BT_GATT_WRITE_FLAG_PREPARE) { return BT_GATT_ERR(BT_ATT_ERR_NOT_SUPPORTED); }
+    if (offset != 0) { return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET); }
+    if (len == 0 || len > BATON_NAME_MAX_BYTES) { return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN); }
+    int ret = baton_device_name_request(buf, len);
+    if (ret == -EINVAL) { return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED); }
+    if (ret < 0) { return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY); }
+    return len;
+}
 
 uint8_t bluetooth_conducting_sensitivity(void)
 {
@@ -187,35 +213,21 @@ BT_GATT_SERVICE_DEFINE(
 	BT_GATT_CHARACTERISTIC(&conducting_settings_uuid.uuid,
 		BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
 		BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
-		read_conducting_settings, write_conducting_settings, NULL)
+		read_conducting_settings, write_conducting_settings, NULL),
+    /* Append only: existing motion/beat attribute indexes remain unchanged. */
+    BT_GATT_CHARACTERISTIC(&device_name_uuid.uuid,
+        BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+        BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
+        read_device_name, write_device_name, NULL)
 );
 
-/*
- * Advertising packet.
- *
- * The device name will appear as "Smart Baton".
+/* Shared baton type identifier stays constant when a device is renamed.
+ * Flags + full 128-bit UUID use 21 of the 31 legacy advertising bytes.
+ * The complete current name (up to 20 UTF-8 bytes) fits in the scan response.
  */
 static const struct bt_data advertising_data[] = {
-	BT_DATA_BYTES(
-		BT_DATA_FLAGS,
-		BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR
-	),
-
-	BT_DATA(
-		BT_DATA_NAME_COMPLETE,
-		CONFIG_BT_DEVICE_NAME,
-		sizeof(CONFIG_BT_DEVICE_NAME) - 1
-	)
-};
-
-/*
- * Put the custom service UUID in the scan response.
- */
-static const struct bt_data scan_response_data[] = {
-	BT_DATA_BYTES(
-		BT_DATA_UUID128_ALL,
-		BT_UUID_MOTION_SERVICE_VAL
-	)
+    BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR),
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_MOTION_SERVICE_VAL)
 };
 
 static void advertising_timeout_handler(struct k_work *work);
@@ -275,6 +287,12 @@ static int start_advertising(void)
 		return 0;
 	}
 
+    char name[BATON_NAME_MAX_BYTES + 1];
+    baton_device_name_copy(name);
+    const struct bt_data scan_response_data[] = {
+        BT_DATA(BT_DATA_NAME_COMPLETE, name, strlen(name))
+    };
+
 	ret = bt_le_adv_start(
 		BT_LE_ADV_CONN_FAST_1,
 		advertising_data,
@@ -295,7 +313,7 @@ static int start_advertising(void)
 			  K_MSEC(ADVERTISING_TIMEOUT_MS));
 	led_set_bluetooth_state(LED_BLUETOOTH_ADVERTISING);
 	printk("Advertising as %s (60-second connection window)\n",
-	       CONFIG_BT_DEVICE_NAME);
+	       name);
 	k_mutex_unlock(&connection_mutex);
 
 	return 0;
@@ -415,6 +433,11 @@ int bluetooth_init(void)
 		return ret;
 	}
 
+    ret = baton_device_name_init();
+    if (ret < 0) {
+        printk("Device name storage initialization failed: %d\n", ret);
+        return ret;
+    }
 	motion_packet[0] = BLUETOOTH_MOTION_PACKET_VERSION;
 	bluetooth_initialized = true;
 	led_set_bluetooth_state(LED_BLUETOOTH_OFF);
