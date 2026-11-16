@@ -20,6 +20,8 @@ static struct gpio_callback button_callback;
 static struct k_work_delayable debounce_work;
 static struct k_work_delayable click_work;
 static struct k_work_delayable long_hold_work;
+static struct k_work_delayable practice_hold_work;
+static bool practice_hold_reported;
 
 static button_event_handler_t event_handler;
 
@@ -47,6 +49,17 @@ static void click_work_handler(struct k_work *work)
 		report_event(BUTTON_EVENT_CLICKS, click_count);
 		click_count = 0;
 	}
+}
+
+static void practice_hold_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    if (pressed && gpio_pin_get_dt(&button) == 1) {
+        practice_hold_reported = true;
+        click_count = 0;
+        k_work_cancel_delayable(&click_work);
+        report_event(BUTTON_EVENT_PRACTICE_HOLD, 0);
+    }
 }
 
 static void long_hold_work_handler(struct k_work *work)
@@ -80,13 +93,17 @@ static void debounce_work_handler(struct k_work *work)
 	if (pressed) {
 		report_event(BUTTON_EVENT_PRESSED, 0);
 		long_hold_reported = false;
+        practice_hold_reported = false;
+        k_work_cancel_delayable(&click_work);
+        k_work_reschedule(&practice_hold_work, K_MSEC(500));
 		k_work_reschedule(&long_hold_work, LONG_HOLD_TIME);
 		return;
 	}
 
 	k_work_cancel_delayable(&long_hold_work);
+    k_work_cancel_delayable(&practice_hold_work);
 
-	if (long_hold_reported) {
+	if (long_hold_reported || practice_hold_reported) {
 		long_hold_reported = false;
 		return;
 	}
@@ -126,6 +143,7 @@ int button_init(button_event_handler_t handler)
 	k_work_init_delayable(&debounce_work, debounce_work_handler);
 	k_work_init_delayable(&click_work, click_work_handler);
 	k_work_init_delayable(&long_hold_work, long_hold_work_handler);
+    k_work_init_delayable(&practice_hold_work, practice_hold_work_handler);
 
 	ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
 	if (ret < 0) {

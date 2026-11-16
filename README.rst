@@ -1129,3 +1129,44 @@ failures, retry and idempotent writes. They do not validate NVS on the nRF, thre
 races, power-loss recovery or radio behavior. No overlay or sensor settings were
 changed. DK build and host checks pass; flashing, reboot persistence, long UTF-8
 names, maximum-length readback and two-phone discovery require hardware QA.
+
+Practice power control
+----------------------
+Normal firmware idles both IMU axes at 12.5 Hz and checks control/buttons every
+100 ms. Practice restores the existing 416 Hz ODR and polling, waits for sensor
+settling and resets the detector. Idle sends no motion or beat notifications.
+Explicit training-capture builds retain full-rate acquisition.
+
+A new append-only read/write characteristic ending in def5 uses commands
+[version=1, active=0/1, command-sequence LE16]. Reads return
+[2, state, hold-sequence, 0, applied-command-sequence LE16], where state is
+0 idle, 1 calibrated/active, 2 transitioning, 3 sensor failure, or 4 calibrating. Writes are idempotent;
+The echoed sequence confirms application rather than GATT receipt;
+active commands renew a five-second lease. The phone polls once per second,
+confirms actual sensor state and renews the lease. Disconnect or expired lease
+returns to idle. Existing packet formats and UUIDs are unchanged.
+
+A half-second (500 ms) hold increments the request sequence once; the foreground phone
+handles it through its normal practice start/stop path. No phone means no start.
+Release after a hold does not generate clicks. Triple-click Bluetooth and the
+ten-second reboot remain (a ten-second hold also crosses the half-second action).
+Use the updated app with this firmware; older apps cannot start high-rate mode.
+Build the DK overlay for the current development hardware. No battery-life or
+physical timing claims are validated by compilation; test both rates, holds,
+rapid start/stop, disconnect, app suspension and current draw on hardware.
+
+Host practice-state regression (no hardware):
+
+::
+
+    cc -std=c11 -Wall -Wextra -Werror -Itests/practice_stubs tests/practice_test.c src/practice.c -o /tmp/baton-practice-check
+    /tmp/baton-practice-check
+
+Calibration visibility fix
+--------------------------
+Power-status version 2 distinguishes full-rate sampling from a calibrated beat
+detector. Each practice start reports calibrating until the detector has seen
+one second of stillness; motion resets that stillness interval. The updated app
+shows Hold still to calibrate and starts beat playback/capture only after state
+1 is confirmed. Sensor data continues during calibration to warm the app filter.
+Command format remains version 1. Install the updated app with this firmware.

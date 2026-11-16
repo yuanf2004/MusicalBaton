@@ -7,6 +7,7 @@ enum button_event_type {
 	BUTTON_EVENT_CLICKS,
 	BUTTON_EVENT_LONG_HOLD,
 	BUTTON_EVENT_PRESSED,
+    BUTTON_EVENT_PRACTICE_HOLD,
 };
 
 struct button_event {

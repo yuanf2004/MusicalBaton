@@ -11,6 +11,7 @@
 #include "conducting.h"
 #include "led.h"
 #include "sensor.h"
+#include "practice.h"
 
 /* 1 / 416 Hz, rounded to the nearest whole microsecond. */
 #define SENSOR_POLL_INTERVAL_US 2404
@@ -65,6 +66,7 @@ int main(void)
 	int ret;
 	int64_t next_ble_ms;
 	int64_t next_diagnostic_ms;
+    bool was_practicing = false;
 	struct conducting_detector detector;
 	conducting_reset(&detector);
 
@@ -112,7 +114,10 @@ int main(void)
 				printk("Baton button pressed\n");
 			}
 
-			if (event.type == BUTTON_EVENT_LONG_HOLD) {
+			if (event.type == BUTTON_EVENT_PRACTICE_HOLD && bluetooth_is_connected()) {
+                practice_request_toggle();
+            }
+            if (event.type == BUTTON_EVENT_LONG_HOLD) {
 				printk("Ten-second hold: rebooting\n");
 				k_sleep(K_MSEC(100));
 				sys_reboot(SYS_REBOOT_COLD);
@@ -146,6 +151,21 @@ int main(void)
 			}
 		}
 
+#if TRAINING_CAPTURE_ENABLED
+        /* Explicit training builds retain their independent boot ODR. */
+        bool practicing = true;
+#else
+        bool practicing = practice_update();
+#endif
+        if (practicing != was_practicing) {
+            conducting_reset(&detector);
+            was_practicing = practicing;
+        }
+        if (!practicing) {
+            /* Keep button/command response under 100 ms without busy polling. */
+            k_sleep(K_MSEC(100));
+            continue;
+        }
 		ret = sensor_read(&sample);
 		if (ret < 0) {
 			printk("Sensor read failed: %d\n", ret);
@@ -158,6 +178,7 @@ int main(void)
 		conducting_set_sensitivity(&detector, bluetooth_conducting_sensitivity());
 		struct conducting_beat beat;
 		bool have_beat = conducting_process(&detector, &sample, &beat);
+        practice_set_calibrated(detector.calibrated);
 		if (have_beat) {
 			ret = bluetooth_publish_beat(beat.timestamp_ms, beat.bpm_tenths,
 						     beat.strength);

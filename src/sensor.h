@@ -2,6 +2,8 @@
 #define MUSICAL_BATON_SENSOR_H
 
 #include <stdint.h>
+#include <stdbool.h>
+int sensor_set_practicing(bool active);
 
 struct motion_sample {
 	/* Local uptime captured immediately after a successful sensor fetch. */

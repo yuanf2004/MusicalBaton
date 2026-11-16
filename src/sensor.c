@@ -126,3 +126,17 @@ int sensor_read(struct motion_sample *sample)
 	};
 	return 0;
 }
+
+/* 12.5 Hz is represented as 12 by this Zephyr driver's ODR table.
+ * Lower both actual IMU ODRs, not only the host polling frequency. */
+int sensor_set_practicing(bool active)
+{
+    struct sensor_value rate = {.val1 = active ? 416 : 12, .val2 = 0};
+    int accel = sensor_attr_set(imu, SENSOR_CHAN_ACCEL_XYZ,
+                                SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
+    int gyro = sensor_attr_set(imu, SENSOR_CHAN_GYRO_XYZ,
+                               SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
+    if (accel < 0 || gyro < 0) { return accel < 0 ? accel : gyro; }
+    if (active) { k_sleep(K_MSEC(IMU_MEASUREMENT_SETTLE_MS)); }
+    return 0;
+}

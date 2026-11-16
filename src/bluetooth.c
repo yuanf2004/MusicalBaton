@@ -1,6 +1,7 @@
 #include "bluetooth.h"
 #include "led.h"
 #include "device_name.h"
+#include "practice.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -45,6 +46,26 @@ static struct bt_uuid_128 conducting_settings_uuid = BT_UUID_INIT_128(
 static struct bt_uuid_128 device_name_uuid = BT_UUID_INIT_128(
     BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef4));
 static atomic_t conducting_sensitivity;
+static struct bt_uuid_128 practice_uuid = BT_UUID_INIT_128(
+    BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef5));
+static ssize_t read_practice(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+                            void *buf, uint16_t len, uint16_t offset)
+{
+    uint8_t packet[6]; practice_snapshot(packet);
+    return bt_gatt_attr_read(conn, attr, buf, len, offset, packet, sizeof(packet));
+}
+static ssize_t write_practice(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+                             const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+{
+    ARG_UNUSED(conn); ARG_UNUSED(attr);
+    if (flags & BT_GATT_WRITE_FLAG_PREPARE) { return BT_GATT_ERR(BT_ATT_ERR_NOT_SUPPORTED); }
+    if (offset) { return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET); }
+    if (len != 4) { return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN); }
+    const uint8_t *packet = buf;
+    if (packet[0] != 1 || packet[1] > 1) { return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED); }
+    practice_command(packet[1] == 1, sys_get_le16(&packet[2]));
+    return len;
+}
 
 static ssize_t read_device_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                void *buf, uint16_t len, uint16_t offset)
@@ -218,7 +239,11 @@ BT_GATT_SERVICE_DEFINE(
     BT_GATT_CHARACTERISTIC(&device_name_uuid.uuid,
         BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
         BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
-        read_device_name, write_device_name, NULL)
+        read_device_name, write_device_name, NULL),
+    BT_GATT_CHARACTERISTIC(&practice_uuid.uuid,
+        BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+        BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
+        read_practice, write_practice, NULL)
 );
 
 /* Shared baton type identifier stays constant when a device is renamed.
@@ -398,6 +423,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	printk("Phone disconnected: 0x%02x\n", reason);
 	notifications_enabled = false;
 	atomic_clear(&phone_connected);
+    practice_disconnect();
 
 	k_mutex_lock(&connection_mutex, K_FOREVER);
 	if (current_connection != NULL) {
