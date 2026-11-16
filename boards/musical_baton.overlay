@@ -46,7 +46,7 @@
 
 		/* The RGB LED is common-anode, so each color is active-low. */
 		rgb_red_led: rgb_red_led {
-			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
 			label = "RGB red";
 		};
 
@@ -56,7 +56,7 @@
 		};
 
 		rgb_blue_led: rgb_blue_led {
-			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
 			label = "RGB blue";
 		};
 	};
@@ -74,13 +74,13 @@
 &pinctrl {
 	baton_pwm0_default: baton_pwm0_default {
 		group1 {
-			psels = <NRF_PSEL(PWM_OUT0, 0, 21)>;
+			psels = <NRF_PSEL(PWM_OUT0, 0, 6)>;
 		};
 	};
 
 	baton_pwm0_sleep: baton_pwm0_sleep {
 		group1 {
-			psels = <NRF_PSEL(PWM_OUT0, 0, 21)>;
+			psels = <NRF_PSEL(PWM_OUT0, 0, 6)>;
 			low-power-enable;
 		};
 	};
@@ -189,3 +189,32 @@
 &button3 {
 	status = "disabled";
 };
+
+/* Remove DK-only reservations: P0.19..24 belong to our button/LEDs.
+ * Keep only the populated LF crystal and reset pin reserved. */
+&gpio0 {
+    gpio-reserved-ranges = <0 2>, <18 1>;
+    /delete-property/ gpio-line-names;
+};
+&gpio1 { /delete-property/ gpio-line-names; };
+
+/* There is no UART, NFC antenna or external SPI flash on this PCB.
+ * Console output uses RTT through the SWD probe (musical_baton.conf). */
+/ {
+    model = "Musical Baton MDBT50Q-1MV2 PCB";
+    chosen {
+        /delete-property/ zephyr,console;
+        /delete-property/ zephyr,shell-uart;
+        /delete-property/ zephyr,uart-mcumgr;
+        /delete-property/ zephyr,bt-mon-uart;
+        /delete-property/ zephyr,bt-c2h-uart;
+    };
+};
+&uart0 { status = "disabled"; };
+&uart1 { status = "disabled"; };
+&spi0 { status = "disabled"; };
+&spi1 { status = "disabled"; };
+&spi2 { status = "disabled"; };
+&spi3 { status = "disabled"; };
+&nfct { status = "disabled"; };
+&pwm_led0 { status = "disabled"; };

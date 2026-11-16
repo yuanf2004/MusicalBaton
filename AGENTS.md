@@ -10,7 +10,7 @@ LSM6DSOX breakout; the finished PCB also uses an LSM6DSOX IMU.
 Treat the KiCad schematic as the source of truth for PCB wiring. The schematic
 used to verify the pin map is currently located at:
 
-`/Users/yuan/Documents/Smart Baton/L Smart Baton/L Smart Baton.kicad_sch`
+`/Users/yuan/Documents/Smart Baton FIN /smart-baton-kicad/L Smart Baton/L Smart Baton.kicad_sch`
 
 Do not hard-code board-specific GPIO numbers in C modules. Application code
 uses devicetree aliases, while overlays map those aliases to development or PCB
@@ -46,10 +46,10 @@ Use `boards/musical_baton.overlay` for the custom PCB.
 |---|---:|---|
 | User button | P0.19 | Active-low to GND with internal pull-up |
 | Charger status | P0.20 | Active-low open-collector signal with pull-up |
-| Bluetooth LED | P0.21 | Active-high PWM output; LED cathode is grounded |
-| RGB red | P0.22 | Active-low, common-anode RGB LED |
+| Bluetooth LED | P0.06 | Active-high PWM output; LED cathode is grounded |
+| RGB red | P1.00 | Active-low, common-anode RGB LED |
 | RGB green | P0.23 | Active-low, common-anode RGB LED |
-| RGB blue | P0.24 | Active-low, common-anode RGB LED |
+| RGB blue | P0.25 | Active-low, common-anode RGB LED |
 | Battery sense | P0.02 / AIN0 | 1 Mohm / 1 Mohm divider with 100 nF capacitor |
 | IMU INT1 | P0.13 | Active-high |
 | IMU INT2 | P0.14 | Active-high |
@@ -78,7 +78,7 @@ C code depends on these logical names:
 | `rgb-blue-led` | Battery RGB blue channel |
 
 The DK overlay maps `baton-button` to P0.11 and `ble-led` to P0.03. The PCB
-overlay maps them to P0.19 and P0.21. Keep application code independent of this
+overlay maps them to P0.19 and P0.06. Keep application code independent of this
 difference.
 
 ## Current firmware behavior

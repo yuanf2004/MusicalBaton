@@ -461,10 +461,10 @@ The separate builds have these pin assignments:
 Function              DK build               PCB build
 ===================== ====================== ======================
 User button           P0.11 (DK Button 1)     P0.19
-Bluetooth LED         P0.03 (Arduino A0)      P0.21
+Bluetooth LED         P0.03 (Arduino A0)      P0.06
 IMU SDA               P0.27                  P0.27
 IMU SCL               P0.26                  P0.26
-Battery RGB           Not mapped             P0.22 / P0.23 / P0.24
+Battery RGB           Not mapped             P1.00 / P0.23 / P0.25
 ===================== ====================== ======================
 
 On startup, the DK should print ``Button initialized: ... pin 11``; the
@@ -673,7 +673,7 @@ timing. IMU sampling continues during button handling.
 
 If startup prints ``Button initialized: ... pin 19`` while using the DK,
 the flashed firmware uses the custom-PCB button mapping. The DK build should
-print ``pin 11``. The PCB overlay also moves the BLE LED to P0.21 instead of
+print ``pin 11``. The PCB overlay also moves the BLE LED to P0.06 instead of
 DK A0/P0.03, so select the correct build rather
 than changing the button GPIO in C. DK pin assignments do not overlap: Button 1
 P0.11, BLE LED P0.03, IMU SDA P0.27, and IMU SCL P0.26.
@@ -812,8 +812,8 @@ backoff and publish nothing. Notification failures print their error code; the
 failed packet is not retried, and the next attempt uses a fresh sample. There
 are no catch-up notification bursts. Exit ``screen`` with Ctrl-A, then K, then Y.
 
-The custom PCB USB-C port supplies power only; its console requires a separate
-UART/debug connection rather than a USB data connection through that port.
+The custom PCB USB-C port supplies power only. PCB console/log output uses
+SEGGER RTT over SWD; the unconnected DK UART pins are disabled.
 
 Development rules
 -----------------
@@ -1038,7 +1038,8 @@ output still requires checking the new per-press messages on the DK.
 
 Shared-I2C wiring validation (2026-10-01): clean DK and PCB builds passed.
 Generated devicetrees confirm SDA P0.27 / SCL P0.26 in both active and sleep
-states, with DK button/LED on P0.11/P0.03 and PCB button/LED on P0.19/P0.21.
+states, with DK button/LED on P0.11/P0.03. That historical PCB build used
+P0.19/P0.21; the final PCB now uses P0.19/P0.06.
 
 LED-transition and advertising-timeout validation (2026-10-01): DK and PCB
 firmware builds passed. Mocked host checks passed for three-pulse transitions,
@@ -1194,3 +1195,136 @@ https://www.st.com/resource/en/application_note/an5272-lsm6dsox-alwayson-3d-acce
 Validate cold boot and MCU reboot, advertising without connection, connecting,
 practice start/stop, disconnect during calibration, reconnect, and sensor/I2C
 failure recovery on the DK. Builds and host tests do not establish power draw.
+
+Custom PCB handoff
+------------------
+The custom MDBT50Q-1MV2 / nRF52840 PCB uses the same application sources as the
+DK, including connection-gated IMU initialization/power-down, 12.5 Hz connected
+idle, 416 Hz practice, calibration status and the 500 ms practice-button hold.
+No mobile app change or duplicated firmware implementation is needed.
+
+Use build-lsm6dsox-pcb with boards/musical_baton.overlay (the base Zephyr board
+name remains nrf52840dk/nrf52840). The PCB overlay was checked against the KiCad
+final schematic netlist: button P0.19, Bluetooth LED P0.06, RGB red/green/blue
+P1.00/P0.23/P0.25, IMU SDA
+P0.27 and SCL P0.26, INT1 P0.13 and INT2 P0.14. SA0 is grounded (address 0x6A).
+The schematic includes the external 32.768 kHz crystal on P0.00/P0.01, matching
+the explicit clock selection in boards/musical_baton.conf. DK-only peripherals
+and LED/button nodes are disabled.
+
+From an NCS v3.4.0 terminal in this repository::
+
+    west build --no-sysbuild -p always -d build-lsm6dsox-pcb -b nrf52840dk/nrf52840 -- -DDTC_OVERLAY_FILE=boards/musical_baton.overlay
+
+Flash only with the debug probe connected to the custom PCB SWD header, not the
+DK onboard MCU. The schematic header J_SWD1 is: 1=3V3 rail, 2=SWDCLK,
+3=SWDIO, 4=RESET, 5=GND. USB-C supplies power and is not a programming port.
+The generated firmware is build-lsm6dsox-pcb/zephyr/zephyr.hex.
+
+The PCB build passes compilation; it has not been flashed or electrically
+validated here. First verify the button/advertising LED, phone connection,
+calibration and beat playback, then disconnect/reconnect and power consumption.
+Battery RGB and battery-sense wiring are mapped but this does not implement
+battery-level measurement or reporting.
+
+PCB build audit and Programmer workflow
+--------------------------------------
+The PCB overlay now removes inherited DK GPIO reservations on P0.19 through
+P0.24, which otherwise mark the PCB button and RGB pins unsupported. Only
+the LF crystal pins P0.00/P0.01 and reset P0.18 remain reserved. DK UART, SPI,
+QSPI, NFC and the extra DK PWM LED are disabled. CMake loads
+boards/musical_baton.conf when selecting boards/musical_baton.overlay.
+PCB console/logging uses nonblocking RTT over SWD, not unconnected UART pins.
+The DK target retains its own configuration.
+
+SDK used: /opt/nordic/ncs/v3.4.0 (NCS 3.4.0, Zephyr 4.4.0), toolchain bundle
+ccc010f809, Zephyr SDK 1.0.1, west 1.5.0. The board base remains
+nrf52840dk/nrf52840 solely for the SoC support; use the PCB overlay explicitly.
+
+Verify a compiled PCB configuration without accessing hardware::
+
+    python3 tools/check_pcb_build.py build-lsm6dsox-pcb --zephyr-base /opt/nordic/ncs/v3.4.0/zephyr
+
+This is a standalone SWD image at address zero, not a bootloader-slot image.
+CONFIG_BOOTLOADER_MCUBOOT is off; the integrated BLE controller is linked into
+the app, so there is no separate SoftDevice HEX to add. A pre-existing
+bootloader is not preserved by installing this image at zero; establish the
+module's current contents before choosing an erase/write action.
+
+Clock and supply assumptions are from the local KiCad schematic: MDBT50Q-1MV2
+includes the 32 MHz crystal and REG1 DC/DC inductor; the PCB shows an external
+32.768 kHz crystal on P0.00/P0.01 and both VDD/VDDH on regulated 3V3. Confirm
+the assembled revision, crystal population and tolerance before flashing.
+The current configuration uses the external LF crystal and a 50 ppm BLE clock
+accuracy setting. It does not enable REG0 DC/DC for the unconnected DCCH pin.
+
+In nRF Connect for Desktop, open Programmer, select the DK's J-Link, and confirm
+Debug Out is routed to the external PCB. Read the device first; both the DK MCU
+and PCB MCU identify as nRF52840, so that chip name alone does not establish
+which target is selected. Add file -> Browse and choose only
+build-lsm6dsox-pcb/zephyr/zephyr.hex. The current J-Link UI calls its programming
+action Erase & write. Use it only when replacement/erasure of existing contents
+is intended; do not recover a protected device without deciding whether its
+contents may be erased. Wait for success/verification, then reset the PCB.
+Triple-press its button to advertise; it does not advertise immediately at boot.
+
+External-target selection and VTG/power behavior differ by DK revision. Check
+the printed PCA10056 revision before wiring P19; do not assume its pin 1 is a
+passive voltage-reference input or connect two regulator outputs together.
+The PCB J_SWD1 signal map is 1=3V3, 2=SWDCLK, 3=SWDIO, 4=RESET, 5=GND.
+Confirm target/debug I/O voltage compatibility before programming.
+
+Primary references:
+
+* Nordic Programmer: https://docs.nordicsemi.com/r/bundle/nrf-connect-for-desktop/page/app/pc-nrfconnect-programmer/programming_dk.html/general-programming-procedure
+* Nordic Debug Out: https://docs.nordicsemi.com/r/bundle/ug_nrf52840_dk/page/ug/dk/ext_programming_support_p19.html
+* Raytac datasheet, version L: https://www.mouser.com/datasheet/3/1361/1/_nRF52840__MDBT50Q_1MV2___MDBT50Q_P1MV2_Ver.L_spec.pdf
+
+Final PCB schematic and pin assignments
+--------------------------------------
+The source is now /Users/yuan/Documents/Smart Baton FIN /smart-baton-kicad/
+L Smart Baton/L Smart Baton.kicad_sch. Its exported XML netlist, MCU pin list,
+and source SHA256 are saved in Docs/hardware-final/.
+
+The final assignments are BLE_LED P0.06 (active-high), RGB_RED P1.00,
+RGB_GREEN P0.23 and RGB_BLUE P0.25 (active-low, common-anode RGB).
+The button is P0.19, SDA/SCL P0.27/P0.26, and reset P0.18.
+The external crystal and SWD connector assignments are unchanged. The PCB
+overlay and build verifier now use this final mapping. Do not use the earlier
+HEX for the final PCB. DK wiring is unchanged. Use the rebuilt
+build-lsm6dsox-pcb/zephyr/zephyr.hex, not build-lsm6dsox-dk.
+
+Sharing firmware and flashing without building
+---------------------------------------------
+To flash an existing PCB HEX, no repository clone, SDK installation or Codex
+session is required. Share build-lsm6dsox-pcb/zephyr/zephyr.hex directly or as
+a release attachment, identifying the source commit and matching PCB revision.
+The recipient needs nRF Connect for Desktop's Programmer app and a compatible
+J-Link/SWD setup. Generated build files are not included in a normal source
+commit; sending the repository alone does not send the compiled HEX.
+
+To rebuild instead, clone the firmware repository, install NCS v3.4.0 and its
+matching toolchain, open an SDK-configured terminal in the repository, and run
+the PCB build command above. Keep boards/musical_baton.conf and the overlay
+alongside CMakeLists.txt; CMake selects the PCB configuration automatically.
+The output is build-lsm6dsox-pcb/zephyr/zephyr.hex. Run tools/check_pcb_build.py
+as shown above to verify the generated configuration before sharing it.
+
+Follow the Programmer workflow above with the external target verified. The
+DK's Debug Out programs the PCB; Debug In is for an external debugger to program
+the DK itself. PCB USB-C provides power/charging only. Do not treat an unknown
+family or an unknown protection status as normal for a new PCB, or as proof of
+read protection; inspect the connection error before considering recovery.
+
+Power checks before programming
+------------------------------
+With Debug Out disconnected and the PCB powered through USB-C, measure DC
+voltage against the PCB GND test point: VBUS should be approximately 5 V and
+the enabled 3V3 rail approximately 3.3 V. A rail near 0.883 V is not a valid
+3.3 V supply; resolve the power problem before attempting programming.
+
+The PCB layout has five test points in a line, in this order: BAT+1, BQ_OUT1,
++3V3, GND1, VBUS1. VBUS1 is the end point adjacent to GND1, away from +3V3,
+toward the USB-C connector. Use these pads rather than probing tiny USB pins.
+These checks do not establish that the assembled PCB has passed electrical or
+functional validation.

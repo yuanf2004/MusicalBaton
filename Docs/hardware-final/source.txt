@@ -1,0 +1,2 @@
+/Users/yuan/Documents/Smart Baton FIN /smart-baton-kicad/L Smart Baton/L Smart Baton.kicad_sch
+SHA256 0940edc07b2d67e3417588646161a23bdea2d0e107113da9662863a515982440

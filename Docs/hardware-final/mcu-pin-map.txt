@@ -1,0 +1,55 @@
++3V3: +3V3 pin 1 1_1, C1 pin 2 , C2 pin 1 , C_MCU_100N1 pin 2 , C_MCU_BULK1 pin 2 , C_TPS_OUT1 pin 1 , C_TPS_OUT2 pin 1 , J_SWD1 pin 1 Pin_1_1, LED_RGB1 pin 2 A_2, R1 pin 1 , R2 pin 2 , R_CHG_PULLUP1 pin 1 , U1 pin 28 VDD_28, U1 pin 30 VDDH_30, U2 pin 12 CS_12, U2 pin 5 VDDIO_5, U2 pin 8 VDD_8, U4 pin 1 VOUT_1, U4 pin 10 FB_10
+/BAT_SENSE: C_SENSE1 pin 1 , R_BOT1 pin 2 , R_TOP1 pin 1 , U1 pin 11 P0.02_11
+/BLE_LED: R3 pin 1 , U1 pin 22 P0.06_22
+/CHG_STATUS: R_CHG_PULLUP1 pin 2 , U1 pin 44 P0.20_44, U3 pin 9 ~{CHG}_9
+/IMU_INT1: U1 pin 37 P0.13_37, U2 pin 4 INT1_4
+/IMU_INT2: U1 pin 36 P0.14_36, U2 pin 9 INT2_9
+/RESET: J_SWD1 pin 4 Pin_4_4, U1 pin 40 P0.18_40
+/RGB_BLUE: RGB_BLUE_R1 pin 2 , U1 pin 49 P0.25_49
+/RGB_GREEN: RGB_GREEN_R1 pin 2 , U1 pin 45 P0.23_45
+/RGB_RED: RGB_RED_R1 pin 2 , U1 pin 47 P1.00_47
+/SWDCLK: J_SWD1 pin 2 Pin_2_2, U1 pin 53 SWDCLK_53
+/SWDIO: J_SWD1 pin 3 Pin_3_3, U1 pin 51 SWDIO_51
+/USER_BTN: SW1_R1 pin 1 , U1 pin 42 P0.19_42
+GND: C1 pin 1 , C2 pin 2 , C_BAT_BQ1 pin 1 , C_IN_BQ1 pin 2 , C_IN_TPS1 pin 1 , C_LFXO1 pin 2 , C_LFXO2 pin 1 , C_MCU_100N1 pin 1 , C_MCU_BULK1 pin 1 , C_OUT_BQ1 pin 1 , C_SENSE1 pin 2 , C_TPS_OUT1 pin 2 , C_TPS_OUT2 pin 2 , D1 pin 1 K_1, GND1 pin 1 1_1, J1 pin A1 GND_A1, J1 pin A12 GND_A12, J1 pin B1 GND_B1, J1 pin B12 GND_B12, J1 pin SH SHIELD_SH, J_BAT1 pin 2 Pin_2_2, J_SWD1 pin 5 Pin_5_5, R4 pin 2 , R5 pin 2 , R_ILIM1 pin 1 , R_ISET1 pin 1 , R_ITERM1 pin 2 , R_TMR1 pin 2 , R_TOP1 pin 2 , R_TS1 pin 2 , SW1 pin 2 2_2, U1 pin 1 GND_1, U1 pin 15 GND_15, U1 pin 2 GND_2, U1 pin 32 VBUS_32, U1 pin 33 GND_33, U1 pin 55 GND_55, U2 pin 1 SDO/SA0_1, U2 pin 2 SDX_2, U2 pin 3 SCX_3, U2 pin 6 GND_6, U2 pin 7 GND_7, U3 pin 17 VSS_17, U3 pin 4 ~{CE}_4, U3 pin 6 EN1_6, U3 pin 8 VSS_8, U4 pin 11 PGND_11, U4 pin 3 PGND_3, U4 pin 7 PS/SYNC_7, U4 pin 9 GND_9, VINA_C1 pin 1 
+Net-(U1-P0.00): C_LFXO1 pin 1 , U1 pin 17 P0.00_17, X_LFXO1 pin 1 1_1
+Net-(U1-P0.01): C_LFXO2 pin 2 , U1 pin 18 P0.01_18, X_LFXO1 pin 2 2_2
+Net-(U1-P0.26): R1 pin 2 , U1 pin 19 P0.26_19, U2 pin 13 SCL_13
+Net-(U1-P0.27): R2 pin 1 , U1 pin 16 P0.27_16, U2 pin 14 SDA_14
+unconnected-(U1-D+-Pad35): U1 pin 35 D+_35
+unconnected-(U1-D--Pad34): U1 pin 34 D-_34
+unconnected-(U1-DCCH-Pad31): U1 pin 31 DCCH_31
+unconnected-(U1-P0.03-Pad9): U1 pin 9 P0.03_9
+unconnected-(U1-P0.04-Pad20): U1 pin 20 P0.04_20
+unconnected-(U1-P0.05-Pad21): U1 pin 21 P0.05_21
+unconnected-(U1-P0.07-Pad23): U1 pin 23 P0.07_23
+unconnected-(U1-P0.08-Pad24): U1 pin 24 P0.08_24
+unconnected-(U1-P0.09-Pad52): U1 pin 52 P0.09_52
+unconnected-(U1-P0.10-Pad54): U1 pin 54 P0.10_54
+unconnected-(U1-P0.11-Pad27): U1 pin 27 P0.11_27
+unconnected-(U1-P0.12-Pad29): U1 pin 29 P0.12_29
+unconnected-(U1-P0.15-Pad39): U1 pin 39 P0.15_39
+unconnected-(U1-P0.16-Pad38): U1 pin 38 P0.16_38
+unconnected-(U1-P0.17-Pad41): U1 pin 41 P0.17_41
+unconnected-(U1-P0.21-Pad43): U1 pin 43 P0.21_43
+unconnected-(U1-P0.22-Pad46): U1 pin 46 P0.22_46
+unconnected-(U1-P0.24-Pad48): U1 pin 48 P0.24_48
+unconnected-(U1-P0.28-Pad13): U1 pin 13 P0.28_13
+unconnected-(U1-P0.29-Pad10): U1 pin 10 P0.29_10
+unconnected-(U1-P0.30-Pad14): U1 pin 14 P0.30_14
+unconnected-(U1-P0.31-Pad12): U1 pin 12 P0.31_12
+unconnected-(U1-P1.01-Pad61): U1 pin 61 P1.01_61
+unconnected-(U1-P1.02-Pad50): U1 pin 50 P1.02_50
+unconnected-(U1-P1.03-Pad60): U1 pin 60 P1.03_60
+unconnected-(U1-P1.04-Pad56): U1 pin 56 P1.04_56
+unconnected-(U1-P1.05-Pad59): U1 pin 59 P1.05_59
+unconnected-(U1-P1.06-Pad57): U1 pin 57 P1.06_57
+unconnected-(U1-P1.07-Pad58): U1 pin 58 P1.07_58
+unconnected-(U1-P1.08-Pad25): U1 pin 25 P1.08_25
+unconnected-(U1-P1.09-Pad26): U1 pin 26 P1.09_26
+unconnected-(U1-P1.10-Pad3): U1 pin 3 P1.10_3
+unconnected-(U1-P1.11-Pad4): U1 pin 4 P1.11_4
+unconnected-(U1-P1.12-Pad5): U1 pin 5 P1.12_5
+unconnected-(U1-P1.13-Pad6): U1 pin 6 P1.13_6
+unconnected-(U1-P1.14-Pad7): U1 pin 7 P1.14_7
+unconnected-(U1-P1.15-Pad8): U1 pin 8 P1.15_8
