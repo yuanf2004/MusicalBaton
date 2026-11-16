@@ -140,3 +140,16 @@ int sensor_set_practicing(bool active)
     if (active) { k_sleep(K_MSEC(IMU_MEASUREMENT_SETTLE_MS)); }
     return 0;
 }
+
+int sensor_power_down(void)
+{
+    if (!i2c_is_ready_dt(&imu_i2c)) { return -ENODEV; }
+    /* LSM6DSOX CTRL1_XL/CTRL2_G ODR bits [7:4] = 0000: power-down.
+     * Masked writes preserve ranges and filter bits. No device_init() here:
+     * the deferred Zephyr device is not configured until a phone connects.
+     * Access stays on the sampling thread, serialized with driver calls. */
+    const uint8_t ctrl1_xl = 0x10, ctrl2_g = 0x11, odr_mask = 0xf0;
+    int accel = i2c_reg_update_byte_dt(&imu_i2c, ctrl1_xl, odr_mask, 0);
+    int gyro = i2c_reg_update_byte_dt(&imu_i2c, ctrl2_g, odr_mask, 0);
+    return accel < 0 ? accel : gyro;
+}

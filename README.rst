@@ -1132,7 +1132,7 @@ names, maximum-length readback and two-phone discovery require hardware QA.
 
 Practice power control
 ----------------------
-Normal firmware idles both IMU axes at 12.5 Hz and checks control/buttons every
+Connected normal firmware idles both IMU axes at 12.5 Hz and checks control/buttons every
 100 ms. Practice restores the existing 416 Hz ODR and polling, waits for sensor
 settling and resets the detector. Idle sends no motion or beat notifications.
 Explicit training-capture builds retain full-rate acquisition.
@@ -1170,3 +1170,27 @@ one second of stillness; motion resets that stillness interval. The updated app
 shows Hold still to calibrate and starts beat playback/capture only after state
 1 is confirmed. Sensor data continues during calibration to warm the app filter.
 Command format remains version 1. Install the updated app with this firmware.
+
+Connection-gated IMU power
+-------------------------
+Normal DK firmware defers full IMU driver initialization until a phone has a
+live BLE connection. Advertising or a saved pairing is not enough. At boot,
+minimal masked I2C writes put both ODRs into power-down, including after an
+MCU-only reset while the IMU still has power. Buttons and Bluetooth initialize
+even if that initial IMU access fails; the main loop retries power-down.
+
+Disconnected: both sensors powered down (0 Hz), no sample fetch or motion/beat
+notifications. Connected idle: 12.5 Hz. Practice: 416 Hz with settling and
+stillness calibration. Disconnect powers down on the sampling thread; reconnect
+returns to idle, never resumes practice. Failed configuration remains an error
+and is retried. The explicit wired training-capture build retains full-rate
+startup without a phone. BLE packet formats and mobile behavior are unchanged.
+
+This is software sensor power-down, not removal of supply voltage: the current
+overlays provide no IMU supply-switch control. Actual battery savings require
+current measurement on hardware. ST documents ODR 0000 power-down for both axes:
+https://www.st.com/resource/en/application_note/an5272-lsm6dsox-alwayson-3d-accelerometer-and-3d-gyroscope-stmicroelectronics.pdf
+
+Validate cold boot and MCU reboot, advertising without connection, connecting,
+practice start/stop, disconnect during calibration, reconnect, and sensor/I2C
+failure recovery on the DK. Builds and host tests do not establish power draw.

@@ -76,10 +76,16 @@ int main(void)
 		return 0;
 	}
 
-	ret = sensor_init();
-	if (ret < 0) {
-		return 0;
-	}
+#if TRAINING_CAPTURE_ENABLED
+    /* Explicit wired dataset capture does not require a phone. */
+    ret = sensor_init();
+    if (ret < 0) { return 0; }
+#else
+    /* Minimal power-down also handles MCU-only resets of a powered IMU.
+     * Full driver initialization waits for a live phone connection. */
+    ret = sensor_power_down();
+    if (ret < 0) { printk("Initial IMU power-down failed: %d\n", ret); }
+#endif
 
 	ret = button_init(on_button_event);
 	if (ret < 0) {
@@ -155,7 +161,7 @@ int main(void)
         /* Explicit training builds retain their independent boot ODR. */
         bool practicing = true;
 #else
-        bool practicing = practice_update();
+        bool practicing = practice_update(bluetooth_is_connected());
 #endif
         if (practicing != was_practicing) {
             conducting_reset(&detector);

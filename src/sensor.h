@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 int sensor_set_practicing(bool active);
+/* Stop both ODRs without initializing the driver; safe after MCU-only reboot.
+ * Main thread only. Leaves the device electrically powered. */
+int sensor_power_down(void);
 
 struct motion_sample {
 	/* Local uptime captured immediately after a successful sensor fetch. */

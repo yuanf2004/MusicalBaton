@@ -4,7 +4,7 @@
 void practice_command(bool active, uint16_t sequence);
 void practice_request_toggle(void);
 void practice_snapshot(uint8_t packet[6]);
-bool practice_update(void);
+bool practice_update(bool connected);
 void practice_disconnect(void);
 
 void practice_set_calibrated(bool calibrated);
