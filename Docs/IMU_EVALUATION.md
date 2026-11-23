@@ -21,7 +21,13 @@ python tools/imu_evaluation.py --port /dev/cu.usbmodemXXXX --seconds 180 --out r
 python tools/imu_evaluation.py --analyze runs/stationary-01/samples.csv
 ```
 
-Replace the example port with the DK serial port. Use a fresh output directory per acquisition. Reanalysis refreshes the PNGs and JSON beside the CSV.
+Replace the example port with the DK serial port. Use a fresh output directory per acquisition. Capture and reanalysis open interactive Matplotlib windows and save statistics.json beside the CSV. The motion window requires practice samples. Use the toolbar magnifier and drag a rectangle over the interval and amplitude of interest. Hold X or Y while dragging to zoom only that axis. Use Pan to move around and Home to restore the full view.
+
+Use the motion checkboxes to show X, Y or Z across the axis panels, Raw or Corrected across all panels, and each sensitivity floor independently. Magnitudes always use all three axes. The sampling-rate window has separate Measured and Target controls. Toggling a line preserves your zoom and the statistics. For the original PNG exports or a computer without a graphical desktop, run:
+
+```sh
+python tools/imu_evaluation.py --analyze runs/stationary-01/samples.csv --png
+```
 
 ## Trials
 

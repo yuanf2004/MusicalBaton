@@ -57,9 +57,29 @@ def capture(port, seconds, path):
     print(f"Saved {count} records, {invalid} malformed evaluation lines to {path}")
 
 
-def analyze(path):
+def add_controls(fig, traces):
+    """Each plotted artist is visible when all its group checkboxes are on."""
+    from matplotlib.widgets import CheckButtons
+    labels = list(dict.fromkeys(label for _, groups in traces for label in groups))
+    fig.subplots_adjust(right=.79)
+    panel = fig.add_axes([.81, .42, .18, .48])
+    panel.set_title("Show traces")
+    checks = CheckButtons(panel, labels, [True] * len(labels))
+
+    def refresh(_):
+        enabled = dict(zip(labels, checks.get_status()))
+        for artist, groups in traces:
+            artist.set_visible(all(enabled[group] for group in groups))
+        fig.canvas.draw_idle()
+
+    checks.on_clicked(refresh)
+    fig.trace_controls = checks  # Keep the widget alive throughout the GUI event loop.
+
+
+def analyze(path, png=False):
     import matplotlib
-    matplotlib.use("Agg")
+    if png:
+        matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     with path.open() as file:
         rows = list(csv.DictReader(file))
@@ -75,6 +95,7 @@ def analyze(path):
     summary = {"duration_s": float(t[-1]), "missing_uart_records":
                sum((b-a-1) % 2**32 for a,b in zip(seq, seq[1:])), "states": []}
     fig, ax = plt.subplots()
+    traces = []
     for lo, hi in zip(starts := np.r_[0, np.flatnonzero(modes[1:] != modes[:-1])+1],
                       np.r_[starts[1:],len(rows)]):
         mode = modes[lo]
@@ -87,10 +108,12 @@ def analyze(path):
         ax.axvline(t[lo], color="grey", lw=.6)
         ax.text(t[lo], .98, mode, transform=ax.get_xaxis_transform(), va="top", fontsize=8)
         if target is not None:
-            ax.hlines(target,t[lo],end,linestyles="dashed",colors="orange")
+            target_line = ax.hlines(target,t[lo],end,linestyles="dashed",colors="orange")
+            traces.append((target_line, ("Target",)))
         if len(rates):
             result.update(mean_hz=float(rates.mean()), sd_hz=float(rates.std()))
-            ax.plot(edges,rates,color="navy")
+            measured, = ax.plot(edges,rates,color="navy")
+            traces.append((measured, ("Measured",)))
             if target is not None:
                 good = abs(rates-target) <= max(1,.05*target)
                 stable = np.where(np.convolve(good.astype(int),np.ones(5),mode="valid")==5)[0] if len(good)>=5 else []
@@ -101,38 +124,52 @@ def analyze(path):
     ax.set(xlabel="Device time since first record (s)",ylabel="Fresh samples / second",
            title="Measured sampling rate and configured targets (dashed)")
     fig.tight_layout()
-    fig.savefig(path.parent/"sampling-rate.png")
-    plt.close(fig)
+    if png:
+        fig.savefig(path.parent/"sampling-rate.png")
+        plt.close(fig)
+    elif traces:
+        add_controls(fig, traces)
     practice = modes == "practice"
     active = practice & samples
     if active.any():
         data = np.array([[float(r[k]) if r[k] else np.nan for k in AXES] for r in rows])
         valid = np.isfinite(data[:,6])
         fig, axes = plt.subplots(3,2,figsize=(12,9),sharex=True)
+        traces = []
         for j,(group,unit) in enumerate([("Gyroscope","deg/s"),("Acceleration","mg")]):
             for col,offset in enumerate([0,6]):
                 xyz = data[:,offset+j*3:offset+j*3+3]
                 ax = axes[j,col]
-                ax.plot(t,xyz,lw=.7)
+                source = "Raw" if col == 0 else "Corrected"
+                for line, axis in zip(ax.plot(t,xyz,lw=.7), "XYZ"):
+                    traces.append((line, (source, axis)))
                 ax.legend("XYZ")
                 ax.set_ylabel(unit)
                 ax.set_title(("Raw " if col==0 else "Corrected ")+group)
                 ax = axes[2,j]
                 mag = np.linalg.norm(xyz,axis=1)
-                ax.plot(t,mag,lw=.8,label="Raw" if col==0 else "Corrected")
+                magnitude, = ax.plot(t,mag,lw=.8,label=source)
+                traces.append((magnitude, (source,)))
                 if valid.any():
                     summary[f"{group}_{col}_paired"] = dict(axis_mean=xyz[valid].mean(axis=0).tolist(),
                         axis_sd=xyz[valid].std(axis=0).tolist(),mean_magnitude=float(mag[valid].mean()))
             axes[2,j].set(xlabel="Time (s)",ylabel=unit,title=group+" magnitude")
         for value,label in [(22,"Gentle"),(30,"Balanced"),(40,"Deliberate")]:
-            axes[2,0].axhline(value,ls=":",lw=.8,label=label)
+            threshold = axes[2,0].axhline(value,ls=":",lw=.8,label=label)
+            traces.append((threshold, (label,)))
         for ax in axes.flat:
             ax.fill_between(t,0,1,where=active & ~valid,transform=ax.get_xaxis_transform(),alpha=.13,color="grey")
         for ax in axes[2]: ax.legend()
         fig.tight_layout()
-        fig.savefig(path.parent/"motion.png")
-        plt.close(fig)
+        if png:
+            fig.savefig(path.parent/"motion.png")
+            plt.close(fig)
+        else:
+            add_controls(fig, traces)
     (path.parent/"statistics.json").write_text(json.dumps(summary,indent=2)+"\n")
+
+    if not png:
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -142,6 +179,7 @@ if __name__ == "__main__":
     options.add_argument("--analyze",type=Path)
     parser.add_argument("--out",type=Path)
     parser.add_argument("--seconds",type=float,default=180)
+    parser.add_argument("--png", action="store_true", help="Write PNG files instead of opening interactive windows")
     args = parser.parse_args()
     if args.port:
         if not args.out or not args.seconds > 0:
@@ -151,4 +189,4 @@ if __name__ == "__main__":
         capture(args.port,args.seconds,path)
     else:
         path = args.analyze
-    analyze(path)
+    analyze(path, png=args.png)
