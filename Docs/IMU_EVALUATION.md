@@ -15,13 +15,13 @@ Flash build-evaluation/zephyr/zephyr.hex onto the DK. Leave its USB UART connect
 ```sh
 python3 -m venv .venv-eval
 source .venv-eval/bin/activate
-pip install pyserial numpy matplotlib
+pip install pyserial numpy matplotlib plotly
 python -m serial.tools.list_ports
 python tools/imu_evaluation.py --port /dev/cu.usbmodemXXXX --seconds 180 --out runs/stationary-01
 python tools/imu_evaluation.py --analyze runs/stationary-01/samples.csv
 ```
 
-Replace the example port with the DK serial port. Use a fresh output directory per acquisition. Capture and reanalysis open interactive Matplotlib windows and save statistics.json beside the CSV. The motion window requires practice samples. Use the toolbar magnifier and drag a rectangle over the interval and amplitude of interest. Hold X or Y while dragging to zoom only that axis. Use Pan to move around and Home to restore the full view.
+Replace the example port with the DK serial port. Use a fresh output directory per acquisition. Capture and reanalysis open interactive Matplotlib windows and save sampling-rate.png and statistics.json beside the CSV. When the run includes practice samples, they also save motion.html. Open or share this standalone file to zoom, pan, and click legend entries to toggle IMU traces offline. Install Plotly in the capture/analysis Python environment with `python -m pip install plotly`. Recipients only need a browser. The motion window requires practice samples. Use the toolbar magnifier and drag a rectangle over the interval and amplitude of interest. Hold X or Y while dragging to zoom only that axis. Use Pan to move around and Home to restore the full view.
 
 Use the motion checkboxes to show X, Y or Z across the axis panels, Raw or Corrected across all panels, and each sensitivity floor independently. Magnitudes always use all three axes. The sampling-rate window has separate Measured and Target controls. Toggling a line preserves your zoom and the statistics. For the original PNG exports or a computer without a graphical desktop, run:
 

@@ -1349,3 +1349,7 @@ Battery specification: https://www.adafruit.com/product/1578
 DK IMU evaluation
 -----------------
 See `IMU evaluation <Docs/IMU_EVALUATION.md>`_ for UART capture, plots and statistics.
+
+IMU evaluation saves an interactive motion.html for practice runs, plus
+sampling-rate.png and statistics.json beside the CSV. See the evaluation guide
+for Python dependencies and Matplotlib controls.

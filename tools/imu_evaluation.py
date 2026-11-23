@@ -76,6 +76,45 @@ def add_controls(fig, traces):
     fig.trace_controls = checks  # Keep the widget alive throughout the GUI event loop.
 
 
+def save_motion_html(path, t, data, calibrating, thresholds):
+    """Embed all practice traces and Plotly itself for offline use."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    figure = make_subplots(rows=2, cols=2, shared_xaxes="all",
+                           subplot_titles=("Gyroscope axes", "Acceleration axes",
+                                           "Angular speed", "Acceleration magnitude"))
+    for col, unit in enumerate(("deg/s", "mg"), start=1):
+        for source, offset in (("Raw", 0), ("Corrected", 6)):
+            start = offset + 3 * (col - 1)
+            xyz = data[:, start:start + 3]
+            for index, axis in enumerate("XYZ"):
+                name = f"{source} {axis}"
+                figure.add_trace(go.Scattergl(x=t, y=xyz[:, index], name=name,
+                    mode="lines", legendgroup=name, showlegend=col == 1,
+                    line=dict(color=("#0072B2", "#D55E00", "#009E73")[index],
+                              dash="solid" if source == "Raw" else "dot")),
+                    row=1, col=col)
+            name = f"{source} magnitude"
+            figure.add_trace(go.Scattergl(x=t, y=np.linalg.norm(xyz, axis=1),
+                name=name, mode="lines", legendgroup=name, showlegend=col == 1,
+                line=dict(color="#555555" if source == "Raw" else "#0072B2")),
+                row=2, col=col)
+        for row in (1, 2):
+            figure.update_yaxes(title_text=unit, row=row, col=col)
+        figure.update_xaxes(title_text="Device time (s)", row=2, col=col)
+    for value, label in thresholds:
+        figure.add_trace(go.Scatter(x=[t[0], t[-1]], y=[value, value], mode="lines",
+                                    name=label, line=dict(dash="dash")), row=2, col=1)
+    changes = np.diff(calibrating.astype(int), prepend=0, append=0)
+    for first, stop in zip(np.flatnonzero(changes == 1), np.flatnonzero(changes == -1)):
+        figure.add_vrect(x0=t[first], x1=t[min(stop, len(t)-1)], fillcolor="gray",
+                         opacity=.13, line_width=0, layer="below", row="all", col="all")
+    figure.update_layout(title="IMU motion", height=800, template="plotly_white")
+    figure.write_html(str(path), include_plotlyjs=True, auto_open=False,
+                      config={"scrollZoom": True, "displaylogo": False})
+
+
 def analyze(path, png=False):
     import matplotlib
     if png:
@@ -124,8 +163,8 @@ def analyze(path, png=False):
     ax.set(xlabel="Device time since first record (s)",ylabel="Fresh samples / second",
            title="Measured sampling rate and configured targets (dashed)")
     fig.tight_layout()
+    fig.savefig(path.parent/"sampling-rate.png")
     if png:
-        fig.savefig(path.parent/"sampling-rate.png")
         plt.close(fig)
     elif traces:
         add_controls(fig, traces)
@@ -154,7 +193,9 @@ def analyze(path, png=False):
                     summary[f"{group}_{col}_paired"] = dict(axis_mean=xyz[valid].mean(axis=0).tolist(),
                         axis_sd=xyz[valid].std(axis=0).tolist(),mean_magnitude=float(mag[valid].mean()))
             axes[2,j].set(xlabel="Time (s)",ylabel=unit,title=group+" magnitude")
-        for value,label in [(22,"Gentle"),(30,"Balanced"),(40,"Deliberate")]:
+        thresholds = [(22,"Gentle"),(30,"Balanced"),(40,"Deliberate")]
+        save_motion_html(path.parent/"motion.html", t, data, active & ~valid, thresholds)
+        for value,label in thresholds:
             threshold = axes[2,0].axhline(value,ls=":",lw=.8,label=label)
             traces.append((threshold, (label,)))
         for ax in axes.flat:
