@@ -238,7 +238,11 @@ bool conducting_process(struct conducting_detector *d,
 	for (unsigned i = 0; i < 3; i++) {
 		linear[i] = a[i] - d->gravity[i];
 	}
-	float acceleration = norm(linear);
+	#ifdef BATON_EVAL_VECTORS
+    memcpy(d->corrected_w, w, sizeof(w));
+    memcpy(d->corrected_a, linear, sizeof(linear));
+#endif
+    float acceleration = norm(linear);
 	if (fabsf(an - 1000.0f) < 80.0f && acceleration < 150.0f && wn < 20.0f) {
 		float alpha = (float)dt_ms / (2000.0f + dt_ms);
 		for (unsigned i = 0; i < 3; i++) {

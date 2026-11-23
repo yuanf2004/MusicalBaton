@@ -87,6 +87,15 @@ int sensor_init(void)
 	return 0;
 }
 
+#if DT_NODE_EXISTS(DT_NODELABEL(baton_evaluation))
+int sensor_data_ready(void)
+{
+    uint8_t status;
+    int err = i2c_reg_read_byte_dt(&imu_i2c, 0x1e, &status);
+    return err ? err : ((status & 3) == 3);
+}
+#endif
+
 int sensor_read(struct motion_sample *sample)
 {
 	struct sensor_value accel[3];

@@ -25,7 +25,7 @@ int led_init(void);
 void led_set_bluetooth_state(enum led_bluetooth_state state);
 void led_set_battery_state(enum led_battery_state state);
 
-/* Charging is blue; >50% green; 20-50% yellow; below 20% red. */
+/* Charging is blue; 70-100% green; 30-69% yellow; below 30% red. */
 void led_set_battery_level(uint8_t percentage, bool charging);
 
 #endif

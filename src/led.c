@@ -261,9 +261,9 @@ void led_set_battery_level(uint8_t percentage, bool charging)
 {
 	if (charging) {
 		led_set_battery_state(LED_BATTERY_CHARGING);
-	} else if (percentage < 20U) {
+	} else if (percentage < 30U) {
 		led_set_battery_state(LED_BATTERY_CRITICAL);
-	} else if (percentage <= 50U) {
+	} else if (percentage < 70U) {
 		led_set_battery_state(LED_BATTERY_LOW);
 	} else {
 		led_set_battery_state(LED_BATTERY_GOOD);

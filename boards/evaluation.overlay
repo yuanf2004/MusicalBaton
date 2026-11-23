@@ -1,0 +1,2 @@
+/ { baton_evaluation: baton-evaluation {}; };
+&uart0 { current-speed = <1000000>; };

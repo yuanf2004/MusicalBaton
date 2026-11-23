@@ -29,7 +29,10 @@ struct conducting_detector {
 	uint32_t last_emitted_ms;
 	struct straight_stroke straight;
 	float gravity[3], bias[3], calibration_accel[3];
-	float speed, peak, accel_peak, release_dps;
+	#ifdef BATON_EVAL_VECTORS
+    float corrected_w[3], corrected_a[3];
+#endif
+    float speed, peak, accel_peak, release_dps;
 	uint16_t intervals[5];
 	unsigned interval_count;
 };

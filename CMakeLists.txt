@@ -17,7 +17,11 @@ target_sources(app PRIVATE
   src/device_name.c
   src/name_protocol.c
   src/button.c
+  src/battery.c
   src/led.c
 )
 
+if(DTC_OVERLAY_FILE MATCHES "evaluation[.]overlay")
+  target_compile_definitions(app PRIVATE BATON_EVAL_VECTORS)
+endif()
 target_link_libraries(app PRIVATE m)

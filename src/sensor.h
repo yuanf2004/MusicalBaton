@@ -30,6 +30,7 @@ int sensor_init(void);
 /* Fetch all six axes and timestamp acquisition. Call from the main thread.
  * Returns 0 or a negative error; leaves the sample unchanged on failure.
  */
+int sensor_data_ready(void);
 int sensor_read(struct motion_sample *sample);
 
 #endif

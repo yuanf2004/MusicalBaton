@@ -1328,3 +1328,24 @@ The PCB layout has five test points in a line, in this order: BAT+1, BQ_OUT1,
 toward the USB-C connector. Use these pads rather than probing tiny USB pins.
 These checks do not establish that the assembled PCB has passed electrical or
 functional validation.
+
+Battery percentage (PCB)
+------------------------
+The PCB reads BAT_SENSE through the equal 1 Mohm divider every 10 seconds,
+filters the voltage, and estimates charge for the Adafruit 1578 single-cell
+3.7 V / 500 mAh LiPo (4.2 V full). RGB is green at 70-100%, yellow at 30-69%,
+and red below 30%. Charging does not override these colors. The standard BLE
+Battery Service 180F exposes read-only Battery Level 2A19; the app polls it.
+Invalid ADC readings turn the RGB off and return a read error rather than a
+fabricated percentage. The DK exposes no battery service.
+
+This is an approximate voltage curve, not a measured state-of-charge gauge;
+load, charging, temperature and battery age affect accuracy. It cannot reliably
+detect an absent battery while USB powers the charger. Validate voltage against
+a meter and calibrate the curve with discharge measurements on the assembled
+PCB. This feature does not change charging or battery protection hardware.
+Battery specification: https://www.adafruit.com/product/1578
+
+DK IMU evaluation
+-----------------
+See `IMU evaluation <Docs/IMU_EVALUATION.md>`_ for UART capture, plots and statistics.

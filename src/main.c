@@ -1,3 +1,4 @@
+#include "battery.h"
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -105,6 +106,7 @@ int main(void)
 	next_diagnostic_ms = next_ble_ms;
 
 	while (1) {
+        battery_poll();
 		/* Use a fresh deadline each cycle; do not catch up in bursts. */
 		int64_t cycle_start_us = k_ticks_to_us_floor64(k_uptime_ticks());
 		int64_t cycle_start_ms = cycle_start_us / 1000;
@@ -167,9 +169,34 @@ int main(void)
             conducting_reset(&detector);
             was_practicing = practicing;
         }
+#ifdef BATON_EVAL_VECTORS
+        uint8_t snapshot[6];
+        practice_snapshot(snapshot);
+        int mode = snapshot[1] == 3 ? -1 : practicing ? 2 : bluetooth_is_connected() ? 1 : 0;
+        static int previous_mode = -2;
+        static int64_t heartbeat;
+        static unsigned sequence;
+        if (mode != previous_mode || cycle_start_ms >= heartbeat) {
+            printk("EVM,%u,%d\n", (unsigned)cycle_start_ms, mode);
+            previous_mode = mode;
+            heartbeat = cycle_start_ms + 500;
+        }
+        if (mode == 1 && sensor_data_ready() > 0) {
+            if (sensor_read(&sample) == 0) {
+                printk("EVI,%u,%u\n", sample.timestamp_ms, sequence++);
+            }
+        } else if (practicing && sensor_data_ready() <= 0) {
+            k_sleep(K_USEC(300));
+            continue;
+        }
+#endif
         if (!practicing) {
             /* Keep button/command response under 100 ms without busy polling. */
+            #ifdef BATON_EVAL_VECTORS
+            k_sleep(K_MSEC(mode == 1 ? 5 : 100));
+#else
             k_sleep(K_MSEC(100));
+#endif
             continue;
         }
 		ret = sensor_read(&sample);
@@ -228,8 +255,18 @@ int main(void)
 			       "Beat detector reset: hold still for one second\n");
 		}
 
+#ifdef BATON_EVAL_VECTORS
+        bool valid = was_calibrated && detector.calibrated;
+        printk("EVS,%u,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+               sample.timestamp_ms, sequence++, valid,
+               sample.gyro_x_dps_tenths, sample.gyro_y_dps_tenths, sample.gyro_z_dps_tenths,
+               sample.accel_x_mg, sample.accel_y_mg, sample.accel_z_mg,
+               (int)(detector.corrected_w[0]*100), (int)(detector.corrected_w[1]*100),
+               (int)(detector.corrected_w[2]*100), (int)detector.corrected_a[0],
+               (int)detector.corrected_a[1], (int)detector.corrected_a[2]);
+#endif
 #if TRAINING_CAPTURE_ENABLED
-		stream_training_sample(&sample);
+        stream_training_sample(&sample);
 #endif
 #if PRINT_CONDUCTING_DIAGNOSTICS && !TRAINING_CAPTURE_ENABLED
 		if (!bluetooth_is_connected() && cycle_start_ms >= next_diagnostic_ms) {
